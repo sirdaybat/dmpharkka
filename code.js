@@ -1,3 +1,5 @@
+"use strict";
+
 if (typeof Object.create !== 'function') {
     Object.create = function (o) {
         function F() {}
@@ -6,140 +8,144 @@ if (typeof Object.create !== 'function') {
     };
 }
 
-var canvas;
-var con;
-var starttime;
-var counter = 0;
+var sh = {};
 
-var view_bottom = 0;
-var scrollspeed = 320/5/1000;
+sh.counter = 0;
 
-function scrY(wrdy){
-	return canvas.height - 1 - wrdy + view_bottom;
+sh.view_bottom = 0;
+sh.scrollspeed = 320 / 5 / 1000;
+
+sh.scrY = function (world_y) {
+	return sh.canvas.height - 1 - world_y + sh.view_bottom;
 }
 
-function wrdY(scry){
-	return canvas.height - 1 - scry + view_bottom;
+sh.wrdY = function (screen_y) {
+	return sh.canvas.height - 1 - screen_y + sh.view_bottom;
 }
 
-function Thing(){
+sh.Thing = function () {
 	this.x = 10;
 	this.y = 50;
 	this.w = 24;
 	this.h = 24;
 }
 
-Thing.prototype.draw = function(){
-	con.fillStyle = "red";
-	con.fillRect(this.x, scrY(this.y), this.w, this.h);
+sh.Thing.prototype.draw = function () {
+	if(this.image !== undefined) sh.con.drawImage(this.image, this.x, sh.scrY(this.y));
+	else{
+		sh.con.fillStyle = "red";
+		sh.con.fillRect(this.x, sh.scrY(this.y), this.w, this.h);
+	}
 }
 
-var backimg = new Image();
+sh.player = new sh.Thing();
 
-var player = new Thing();
+sh.update_delay = 10;
+sh.draw_delay = 10;
+sh.downkeys = [];
 
-var update_delay = 10;
-var draw_delay = 10;
-var downkeys = [];
-
-function keyDown(evt){
-	downkeys[evt.keyCode] = true;
+sh.keyDown = function(evt){
+	sh.downkeys[evt.keyCode] = true;
 }
 
-function keyUp(evt){
-	downkeys[evt.keyCode] = false;
+sh.keyUp = function(evt){
+	sh.downkeys[evt.keyCode] = false;
 }
 
-function realtime(){
-	return (new Date()).getTime() - starttime;
+sh.realtime = function(){
+	return (new Date()).getTime() - sh.starttime;
 }
 
-var imagepaths = Object.freeze({
+sh.imagepaths = Object.freeze({
 	background: "resources/background-24x24.png",
 	ship: "resources/ship-24x24.png",
 	greenenemy: "resources/greenenemy-24x24.png",
+	purplebullet: "resources/purplebullet-10x10.png",
+	whitebullet: "resources/whitebullet-10x10.png"
 });
 
-var images = {};
-var imagesLoaded = 0;
-var imageCount = 0;
+sh.images = {};
+sh.imagesLoaded = 0;
+sh.imageCount = 0;
 
-function init(){
-	loadImages();
+sh.init = function(){
+	sh.loadImages();
 }
 
-var imageWaitInterval;
-
-function loadImages(){
-	for(imagehandle in imagepaths){
-		images[imagehandle] = new Image();
-		images[imagehandle].onload = function(){ imagesLoaded++; };
-		images[imagehandle].src = imagepaths[imagehandle];
-		imageCount++;
+sh.loadImages = function(){
+	var imagehandle;
+	for(imagehandle in sh.imagepaths){
+		sh.images[imagehandle] = new Image();
+		sh.images[imagehandle].onload = function(){ sh.imagesLoaded++; };
+		sh.images[imagehandle].src = sh.imagepaths[imagehandle];
+		sh.imageCount++;
 	}
 	
-	imageWaitInterval = window.setInterval("waitForImages()", 100);
+	sh.imageWaitInterval = window.setInterval("sh.waitForImages()", 100);
 }
 
-function waitForImages(){	
-	if(imagesLoaded == imageCount){
-		window.clearInterval(imageWaitInterval);
-		restOfInit();
+sh.waitForImages = function(){
+	if(sh.imagesLoaded === sh.imageCount){
+		window.clearInterval(sh.imageWaitInterval);
+		Object.freeze(sh.images);
+		sh.restOfInit();
 	}
 }
 
-function restOfInit(){
-	canvas = document.getElementById("can");
-	con = canvas.getContext("2d");
+sh.restOfInit = function(){
+	sh.canvas = document.getElementById("can");
+	sh.con = sh.canvas.getContext("2d");
 	
-	starttime = (new Date()).getTime();
+	sh.starttime = (new Date()).getTime();
 
-	window.addEventListener("keydown", keyDown, true);
-	window.addEventListener("keyup", keyUp, false);
+	window.addEventListener("keydown", sh.keyDown, true);
+	window.addEventListener("keyup", sh.keyUp, false);
 	
-	window.setInterval("update()", update_delay);
-	window.setInterval("draw()", draw_delay);
+	window.setInterval("sh.update()", sh.update_delay);
+	window.setInterval("sh.draw()", sh.draw_delay);
+	
+	sh.player.image = sh.images.ship;
 }
 
-function update(){
-	while(counter < realtime()){
-		view_bottom += scrollspeed*update_delay;
+sh.update = function(){
+	while(sh.counter < sh.realtime()){
+		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
-		if(downkeys[37]) player.x -= 0.2*update_delay;
-		if(downkeys[39]) player.x += 0.2*update_delay;
-		if(downkeys[38]) player.y += 0.2*update_delay;
-		if(downkeys[40]) player.y -= 0.2*update_delay;
-		player.y += scrollspeed*update_delay;
+		if(sh.downkeys[37]) sh.player.x -= 0.2*sh.update_delay;
+		if(sh.downkeys[39]) sh.player.x += 0.2*sh.update_delay;
+		if(sh.downkeys[38]) sh.player.y += 0.2*sh.update_delay;
+		if(sh.downkeys[40]) sh.player.y -= 0.2*sh.update_delay;
+		sh.player.y += sh.scrollspeed*sh.update_delay;
 		
-		counter += update_delay;
+		sh.counter += sh.update_delay;
 	}
-	while(counter > realtime());
+	while(sh.counter > sh.realtime());
 }
 
-function draw(){
-	con.fillStyle = "black";
-	con.fillRect(0, 0, canvas.width, canvas.height);
-	con.fillStyle = "red";
+sh.draw = function(){
+	sh.con.fillStyle = "black";
+	sh.con.fillRect(0, 0, sh.canvas.width, sh.canvas.height);
+	sh.con.fillStyle = "red";
 	
 	var y;
-	var back_start = wrdY(canvas.height-1);
-	var back_end = wrdY(0);
+	var back_start = sh.wrdY(sh.canvas.height-1);
+	var back_end = sh.wrdY(0);
 	for(y = back_start; y <= back_end + 24; y += 24){
 		var back_idx = Math.floor(y / 24);
-		var scry = Math.round(scrY(back_idx*24+23));
+		var screeny = Math.round(sh.scrY(back_idx*24+23));
 		var i;
 		for(i = 0; i < 10; i++){
-			var real_idx = background.length - 1 - back_idx;
+			var real_idx = sh.background.length - 1 - back_idx;
 			if(real_idx >= 0){
-				if(background[real_idx].charAt(i) == '1') con.drawImage(images.background, i*24, scry);
+				if(sh.background[real_idx].charAt(i) === '1') sh.con.drawImage(sh.images.background, i*24, screeny);
 			}
 		}
 	}
 	
-	con.font = "10pt Monospace";
-	con.fillText("real time " + realtime(), 10, 30);
-	con.fillText("counter   " + counter, 10, 60);	
+	sh.con.font = "10pt Monospace";
+	sh.con.fillText("real time " + sh.realtime(), 10, 30);
+	sh.con.fillText("counter   " + sh.counter, 10, 60);	
 	
-	player.draw();
+	sh.player.draw();
 
 }

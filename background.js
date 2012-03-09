@@ -1,4 +1,6 @@
-var background = [
+"use strict";
+
+sh.background = [
 "1000110001",
 "0101010001",
 "0010010001",
