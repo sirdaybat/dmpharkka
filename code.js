@@ -151,9 +151,9 @@ sh.draw = function(){
 		var screeny = Math.round(sh.scrY(back_idx*24+23));
 		var i;
 		for(i = 0; i < 10; i++){
-			var real_idx = sh.background.length - 1 - back_idx;
+			var real_idx = sh.leveldata.length - 1 - back_idx;
 			if(real_idx >= 0){
-				if(sh.background[real_idx].charAt(i) === '1') sh.con.drawImage(sh.images.background, i*24, screeny);
+				if(sh.leveldata[real_idx][0].charAt(i) === '1') sh.con.drawImage(sh.images.background, i*24, screeny);
 			}
 		}
 	}
