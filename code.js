@@ -6,6 +6,22 @@ if (typeof Object.create !== 'function') {
     };
 }
 
+var gameObjectTypes = Object.freeze({
+    unidentified : 0,
+    playerShip : 0,
+    enemy : 100,
+    playerBullet : 200,
+    enemyBullet : 300
+});
+
+var gameObject = {
+    type : gameObjectTypes.unidentified,
+    x : 100,
+    y : 100,
+    width : 50,
+    height : 50
+}
+
 var canvas;
 var con;
 var starttime;
