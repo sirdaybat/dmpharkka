@@ -57,7 +57,7 @@ sh.leveldata = [
 ["0010010001", function(){}],
 ["0101010101", function(){}],
 ["1010101010", sh.genTestEnemy],
-["0111010001", function(){}],
+["0111010001", sh.createSlowEnemy],
 ["1000110001", function(){}],
 ["0101010001", function(){}],
 ["0010010001", function(){}],

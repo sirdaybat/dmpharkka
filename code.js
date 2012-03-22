@@ -10,14 +10,68 @@ sh.gameObjectTypes = Object.freeze({
     enemyBullet : 400
 });
 
+sh.none = function () {};
+
+// helper function: allows using object literals with prototypes
+sh.pCreate = function(prototype, object) {
+  var newObject = Object.create(prototype);
+  for (var prop in object) {
+    if (object.hasOwnProperty(prop)) {
+      newObject[prop] = object[prop];
+    }
+  }
+  return newObject;
+};
+
+// gameObject
+
 sh.gameObject = {
-    type : sh.gameObjectTypes.unidentified,
+    //type : sh.gameObjectTypes.unidentified,
     x : 100,
     y : 100,
     width : 24,
-    height : 24,
-    update : function(){}
+    height : 24
 };
+
+// enemy
+
+sh.enemy = sh.pCreate(sh.gameObject, {
+    hitpoints : 100
+});
+
+// fastEnemy
+
+sh.fastEnemy = sh.pCreate(sh.enemy, {
+    update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.002) + 1) * 0.5 * (sh.canvas.width - this.width); }
+});
+
+sh.createFastEnemy = function(){
+	var new_enemy = Object.create(sh.fastEnemy);
+	new_enemy.x = 0;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.lifestarttime = sh.gametime;
+	sh.enemies.push(new_enemy);
+}
+
+// slowEnemy
+
+sh.slowEnemy = sh.pCreate(sh.enemy, {
+    update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.001) + 1) * 0.5 * (sh.canvas.width - this.width); },
+    hitpoints : 200
+});
+
+sh.createSlowEnemy = function(){
+	var new_enemy = Object.create(sh.slowEnemy);
+	new_enemy.x = 0;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.lifestarttime = sh.gametime;
+	sh.enemies.push(new_enemy);
+}
+
+// player bullet
+sh.playerBullet = sh.pCreate(sh.gameObject, {
+    damage : 100
+});
 
 sh.doWorldRectsCollide = function(rect0, rect1){
 	var outsideLeftOrDown = function(rc0, rc1){
