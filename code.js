@@ -14,16 +14,36 @@ sh.gameObject = {
     type : sh.gameObjectTypes.unidentified,
     x : 100,
     y : 100,
-    width : 50,
-    height : 50,
+    width : 24,
+    height : 24,
     update : function(){}
 };
 
-sh.scrY = function (world_y) {
+sh.doWorldRectsCollide = function(rect0, rect1){
+	var outsideLeftOrDown = function(rc0, rc1){
+		return rc0.r < rc1.l || rc0.u < rc1.d;
+	}
+	return !(outsideLeftOrDown(rect0, rect1) || outsideLeftOrDown(rect1, rect0));
+}
+
+sh.gameObjectRect = function(obj){
+	return {
+		l : obj.x,
+		r : obj.x + obj.width - 1,
+		u : obj.y,
+		d : obj.y - obj.height + 1
+	};
+}
+
+sh.doGameObjectsCollide = function(obj0, obj1){
+	return sh.doWorldRectsCollide(sh.gameObjectRect(obj0), sh.gameObjectRect(obj1));
+}
+
+sh.scrY = function(world_y){
 	return sh.canvas.height - 1 - world_y + sh.view_bottom;
 }
 
-sh.wrdY = function (screen_y) {
+sh.wrdY = function(screen_y){
 	return sh.canvas.height - 1 - screen_y + sh.view_bottom;
 }
 
@@ -91,20 +111,13 @@ sh.restOfInit = function(){
 	sh.gametime = 0;
 	sh.view_bottom = 0;
 	sh.scrollspeed = 320 / 5 / 1000;
-	sh.update_delay = 10;
-	sh.draw_delay = 10;
+	sh.update_delay = 30;
+	sh.draw_delay = 30;
 	sh.downkeys = [];
 	sh.enemies = [];
+	sh.last_executed_level_line = -1;
 	
-	var testenemy = Object.create(sh.gameObject);
-	testenemy.x = 0;
-	testenemy.y = 100;
-	testenemy.type = sh.gameObjectTypes.enemy;
-	testenemy.update = function(){
-		this.x = sh.player.x + Math.cos(sh.gametime*0.004)*50;
-		this.y = sh.player.y + Math.sin(sh.gametime*0.004)*50;
-	}
-	sh.enemies.push(testenemy);
+	sh.playerCollides = false;
 
 	window.addEventListener("keydown", sh.keyDown, true);
 	window.addEventListener("keyup", sh.keyUp, false);
@@ -120,6 +133,31 @@ sh.update = function(){
 		sh.player.update();
 		for(var eidx in sh.enemies) sh.enemies[eidx].update();
 		
+		var level_line_to_execute = Math.floor((sh.view_bottom + sh.canvas.height) / 24) + 1;
+		while(sh.last_executed_level_line < level_line_to_execute){
+			sh.last_executed_level_line++;
+			
+			var real_idx = sh.leveldata.length - 1 - sh.last_executed_level_line;
+			if(real_idx >= 0) sh.leveldata[real_idx][1]();
+		}
+		
+		for(var idx = 0; idx < sh.enemies.length; idx++){
+			var enemy = sh.enemies[idx];
+			if(enemy.x + enemy.width < -2*24 || enemy.x > sh.canvas.width + 2*24 ||
+				enemy.y < sh.view_bottom - 2*24 || enemy.y - enemy.height > sh.view_bottom + sh.canvas.height + 2*24){
+				sh.enemies.splice(idx, 1);
+			}
+		}
+		
+		sh.playerCollides = false;
+		for(var idx in sh.enemies){
+			if(sh.doGameObjectsCollide(sh.player, sh.enemies[idx])){
+				sh.playerCollides = true;
+				break;
+			}
+		}
+		
+		
 		sh.gametime += sh.update_delay;
 	}
 	while(sh.gametime > sh.realtime());
@@ -130,24 +168,27 @@ sh.draw = function(){
 	sh.con.fillRect(0, 0, sh.canvas.width, sh.canvas.height);
 	sh.con.fillStyle = "red";
 	
-	var back_start = sh.wrdY(sh.canvas.height-1);
+	var back_start = sh.wrdY(sh.canvas.height - 1);
 	var back_end = sh.wrdY(0);
+	var back_idx = Math.floor(Math.round(back_start) / 24);
 	for(var y = back_start; y <= back_end + 24; y += 24){
-		var back_idx = Math.floor(y / 24);
-		var screeny = Math.round(sh.scrY(back_idx*24+23));
+		var screeny = Math.round(sh.scrY(back_idx*24 + 23));
 		for(var i = 0; i < 10; i++){
 			var real_idx = sh.leveldata.length - 1 - back_idx;
 			if(real_idx >= 0){
 				if(sh.leveldata[real_idx][0].charAt(i) === '1') sh.con.drawImage(sh.images.background, i*24, screeny);
 			}
 		}
+		back_idx++;
 	}
 	
 	sh.con.font = "10pt Monospace";
 	sh.con.fillText("real time " + sh.realtime(), 10, 30);
-	sh.con.fillText("gametime   " + sh.gametime, 10, 60);	
+	sh.con.fillText("gametime   " + sh.gametime, 10, 60);
+	sh.con.fillText("num of enemies " + sh.enemies.length, 10, 90);
 	
 	sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
+	if(sh.playerCollides) sh.con.fillRect(sh.player.x, sh.scrY(sh.player.y), sh.player.width, sh.player.height);
 	for(var idx in sh.enemies){
 		var enemyship = sh.enemies[idx];
 		sh.con.drawImage(sh.images.greenenemy, enemyship.x, sh.scrY(enemyship.y));
