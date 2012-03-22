@@ -10,14 +10,103 @@ sh.gameObjectTypes = Object.freeze({
     enemyBullet : 400
 });
 
+sh.none = function () {};
+
+// helper function: allows using object literals with prototypes
+sh.pCreate = function(prototype, object) {
+  var newObject = Object.create(prototype);
+  for (var prop in object) {
+    if (object.hasOwnProperty(prop)) {
+      newObject[prop] = object[prop];
+    }
+  }
+  return newObject;
+};
+
+// gameObject
+
 sh.gameObject = {
-    type : sh.gameObjectTypes.unidentified,
+    //type : sh.gameObjectTypes.unidentified,
     x : 100,
     y : 100,
     width : 24,
-    height : 24,
-    update : function(){}
+    height : 24
 };
+
+// enemy
+
+sh.enemy = sh.pCreate(sh.gameObject, {
+    hitpoints : 100
+});
+
+// fastEnemy
+
+sh.fastEnemy = sh.pCreate(sh.enemy, {
+    update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.002) + 1) * 0.5 * (sh.canvas.width - this.width);},
+	image : 'greenenemy'
+});
+
+sh.createFastEnemy = function(){
+	var new_enemy = Object.create(sh.fastEnemy);
+	new_enemy.x = 0;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.lifestarttime = sh.gametime;
+	sh.enemies.push(new_enemy);
+}
+
+// slowEnemy
+
+sh.slowEnemy = sh.pCreate(sh.enemy, {
+    update : function () {
+		this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.001) + 1) * 0.5 * (sh.canvas.width - this.width);
+		if(sh.gametime - this.last_shot > 800){
+			sh.createEnemyBullet(this.x + this.width * 0.5 - 5, this.y - this.height);
+			this.last_shot = sh.gametime;
+		}
+	},
+    hitpoints : 200,
+	image : 'greenenemy'
+});
+
+sh.createSlowEnemy = function(){
+	var new_enemy = Object.create(sh.slowEnemy);
+	new_enemy.x = 0;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.lifestarttime = sh.gametime;
+	new_enemy.last_shot = -1;
+	sh.enemies.push(new_enemy);
+}
+
+// player bullet
+sh.playerBullet = sh.pCreate(sh.gameObject, {
+	update : function () { this.y += (sh.scrollspeed + 0.3) * sh.update_delay; },
+    damage : 100,
+	width : 10,
+	height : 10,
+	image : 'whitebullet'
+});
+
+sh.createPlayerBullet = function(x, y){
+	var new_bullet = Object.create(sh.playerBullet);
+	new_bullet.x = x;
+	new_bullet.y = y;
+	sh.player_bullets.push(new_bullet);
+}
+
+// enemy bullet
+sh.enemyBullet = sh.pCreate(sh.gameObject, {
+	update : function () { this.y -= 0.2 * sh.update_delay; },
+	width : 10,
+	height : 10,
+	image : 'purplebullet'
+});
+
+sh.createEnemyBullet = function(x, y){
+	var new_bullet = Object.create(sh.enemyBullet);
+	new_bullet.x = x;
+	new_bullet.y = y;
+	sh.enemy_bullets.push(new_bullet);
+}
 
 sh.doWorldRectsCollide = function(rect0, rect1){
 	var outsideLeftOrDown = function(rc0, rc1){
@@ -76,16 +165,7 @@ sh.player.update = function(){
 	if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
 	
 	if(sh.gametime - sh.player.last_shot >= 400){
-		var new_bullet = Object.create(sh.gameObject);
-		new_bullet.width = 10;
-		new_bullet.height = 10;
-		new_bullet.x = this.x + this.width * 0.5 - new_bullet.width * 0.5;
-		new_bullet.y = this.y + new_bullet.height;
-		new_bullet.update = function(){
-			this.y += (sh.scrollspeed + 0.3) * sh.update_delay;
-		}
-		
-		sh.player_bullets.push(new_bullet);
+		sh.createPlayerBullet(this.x + this.width * 0.5 - 5, this.y + 10);
 		
 		this.last_shot = sh.gametime;
 	}
@@ -281,17 +361,17 @@ sh.draw = function(){
 	
 	for(var idx in sh.enemies){
 		var enemyship = sh.enemies[idx];
-		sh.con.drawImage(sh.images.greenenemy, enemyship.x, sh.scrY(enemyship.y));
+		sh.con.drawImage(sh.images[enemyship.image], enemyship.x, sh.scrY(enemyship.y));
 	}
 	
 	for(var idx in sh.player_bullets){
 		var bullet = sh.player_bullets[idx];
-		sh.con.drawImage(sh.images.whitebullet, bullet.x, sh.scrY(bullet.y));
+		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
 	}
 	
 	for(var idx in sh.enemy_bullets){
 		var bullet = sh.enemy_bullets[idx];
-		sh.con.drawImage(sh.images.purplebullet, bullet.x, sh.scrY(bullet.y));
+		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
 	}
 	
 
