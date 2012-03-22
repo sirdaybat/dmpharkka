@@ -39,6 +39,21 @@ sh.doGameObjectsCollide = function(obj0, obj1){
 	return sh.doWorldRectsCollide(sh.gameObjectRect(obj0), sh.gameObjectRect(obj1));
 }
 
+sh.updateObjects = function(objlist){
+	for(var idx in objlist) objlist[idx].update();
+}
+
+sh.removeOutOfScreenObjects = function(objlist){
+	for(var idx = 0; idx < objlist.length; idx++){
+		var obj = objlist[idx];
+		if(obj.x + obj.width < -2*24 || obj.x > sh.canvas.width + 2*24 ||
+			obj.y < sh.view_bottom - 2*24 || obj.y - obj.height > sh.view_bottom + sh.canvas.height + 2*24){
+			
+			objlist.splice(idx, 1);
+		}
+	}
+}
+
 sh.scrY = function(world_y){
 	return sh.canvas.height - 1 - world_y + sh.view_bottom;
 }
@@ -54,6 +69,26 @@ sh.player.update = function(){
 	if(sh.downkeys[38]) this.y += 0.2*sh.update_delay;
 	if(sh.downkeys[40]) this.y -= 0.2*sh.update_delay;
 	this.y += sh.scrollspeed*sh.update_delay;
+	
+	if(this.x < 0) this.x = 0;
+	if(this.x > sh.canvas.width - this.width) this.x = sh.canvas.width - this.width;
+	if(this.y < sh.view_bottom + this.height - 1) this.y = sh.view_bottom + this.height - 1;
+	if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
+	
+	if(sh.gametime - sh.player.last_shot >= 400){
+		var new_bullet = Object.create(sh.gameObject);
+		new_bullet.width = 10;
+		new_bullet.height = 10;
+		new_bullet.x = this.x + this.width * 0.5 - new_bullet.width * 0.5;
+		new_bullet.y = this.y + new_bullet.height;
+		new_bullet.update = function(){
+			this.y += (sh.scrollspeed + 0.3) * sh.update_delay;
+		}
+		
+		sh.player_bullets.push(new_bullet);
+		
+		this.last_shot = sh.gametime;
+	}
 }
 
 sh.keyDown = function(evt){
@@ -76,11 +111,40 @@ sh.imagepaths = Object.freeze({
 	whitebullet: "resources/whitebullet-10x10.png"
 });
 
-sh.init = function(){
+sh.game_init = function(){
+	sh.canvas = document.getElementById("can");
+	sh.con = sh.canvas.getContext("2d");
+	
 	sh.images = {};
 	sh.imagesLoaded = 0;
 	sh.imageCount = 0;
 	sh.loadImages();
+}
+
+sh.round_init = function(){
+	sh.scrollspeed = 320 / 5 / 1000;
+	sh.update_delay = 30;
+	sh.draw_delay = 30;
+	
+	sh.player.x = sh.canvas.width * 0.5 - sh.player.width * 0.5;
+	sh.player.y = 24 + sh.player.height;
+	sh.player.last_shot = -1;
+	
+	sh.player_lives = 1;
+	sh.player_is_immortal = false;
+	sh.player_immortal_starttime = -1;
+	sh.immortality_duration = 1000;
+	
+	sh.playerCollides = false;
+	
+	sh.downkeys = [];
+	sh.enemies = [];
+	sh.enemy_bullets = [];
+	sh.player_bullets = [];
+	sh.last_executed_level_line = -1;
+	sh.gametime = 0;
+	sh.view_bottom = 0;
+	sh.starttime = (new Date()).getTime();
 }
 
 sh.loadImages = function(){
@@ -103,22 +167,8 @@ sh.waitForImages = function(){
 }
 
 sh.restOfInit = function(){
-	sh.canvas = document.getElementById("can");
-	sh.con = sh.canvas.getContext("2d");
+	sh.round_init();
 	
-	sh.starttime = (new Date()).getTime();
-	
-	sh.gametime = 0;
-	sh.view_bottom = 0;
-	sh.scrollspeed = 320 / 5 / 1000;
-	sh.update_delay = 30;
-	sh.draw_delay = 30;
-	sh.downkeys = [];
-	sh.enemies = [];
-	sh.last_executed_level_line = -1;
-	
-	sh.playerCollides = false;
-
 	window.addEventListener("keydown", sh.keyDown, true);
 	window.addEventListener("keyup", sh.keyUp, false);
 	
@@ -130,8 +180,9 @@ sh.update = function(){
 	while(sh.gametime < sh.realtime()){
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
-		sh.player.update();
-		for(var eidx in sh.enemies) sh.enemies[eidx].update();
+		sh.updateObjects(sh.enemies);
+		sh.updateObjects(sh.player_bullets);
+		sh.updateObjects(sh.enemy_bullets);
 		
 		var level_line_to_execute = Math.floor((sh.view_bottom + sh.canvas.height) / 24) + 1;
 		while(sh.last_executed_level_line < level_line_to_execute){
@@ -141,13 +192,9 @@ sh.update = function(){
 			if(real_idx >= 0) sh.leveldata[real_idx][1]();
 		}
 		
-		for(var idx = 0; idx < sh.enemies.length; idx++){
-			var enemy = sh.enemies[idx];
-			if(enemy.x + enemy.width < -2*24 || enemy.x > sh.canvas.width + 2*24 ||
-				enemy.y < sh.view_bottom - 2*24 || enemy.y - enemy.height > sh.view_bottom + sh.canvas.height + 2*24){
-				sh.enemies.splice(idx, 1);
-			}
-		}
+		sh.removeOutOfScreenObjects(sh.enemies);
+		sh.removeOutOfScreenObjects(sh.player_bullets);
+		sh.removeOutOfScreenObjects(sh.enemy_bullets);
 		
 		sh.playerCollides = false;
 		for(var idx in sh.enemies){
@@ -156,7 +203,34 @@ sh.update = function(){
 				break;
 			}
 		}
+		if(!sh.playerCollides){
+			for(var idx in sh.enemy_bullets){
+				if(sh.doGameObjectsCollide(sh.player, sh.enemy_bullets[idx])){
+					sh.playerCollides = true;
+					break;
+				}
+			}
+		}
 		
+		if(sh.player_lives >= 0){
+			sh.player.update();
+			
+			if(sh.playerCollides && !sh.player_is_immortal){
+				sh.player_is_immortal = true;
+				sh.player_immortal_starttime = sh.gametime;
+				sh.player_lives--;
+			}
+			
+			if(sh.player_is_immortal && sh.gametime - sh.player_immortal_starttime > sh.immortality_duration){
+				sh.player_is_immortal = false;
+			}
+		}
+		else{
+			if(sh.downkeys[13]){
+				sh.round_init();
+				return;
+			}
+		}
 		
 		sh.gametime += sh.update_delay;
 	}
@@ -183,15 +257,42 @@ sh.draw = function(){
 	}
 	
 	sh.con.font = "10pt Monospace";
-	sh.con.fillText("real time " + sh.realtime(), 10, 30);
-	sh.con.fillText("gametime   " + sh.gametime, 10, 60);
-	sh.con.fillText("num of enemies " + sh.enemies.length, 10, 90);
 	
-	sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
-	if(sh.playerCollides) sh.con.fillRect(sh.player.x, sh.scrY(sh.player.y), sh.player.width, sh.player.height);
+	sh.con.fillText("real time " + sh.realtime(), 10, 60);
+	sh.con.fillText("gametime   " + sh.gametime, 10, 75);
+	sh.con.fillText("num of enemies " + sh.enemies.length, 10, 90);
+	sh.con.fillText("num of playerbullets " + sh.player_bullets.length, 10, 105);
+	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
+	
+	if(sh.player_lives >= 0){
+		sh.con.font = "12pt Monospace";
+		sh.con.fillText("Lives: " + sh.player_lives, 12, 24);
+		
+		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 == 0){
+			sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
+		}
+	}
+	else{
+		sh.con.font = "24pt Monospace";
+		sh.con.fillText("GAME OVER", 36, sh.canvas.height*0.5);
+		sh.con.font = "12pt Monospace";
+		sh.con.fillText("PRESS ENTER TO RESTART", 12, sh.canvas.height*0.5 + 24 + 12);
+	}
+	
 	for(var idx in sh.enemies){
 		var enemyship = sh.enemies[idx];
 		sh.con.drawImage(sh.images.greenenemy, enemyship.x, sh.scrY(enemyship.y));
 	}
+	
+	for(var idx in sh.player_bullets){
+		var bullet = sh.player_bullets[idx];
+		sh.con.drawImage(sh.images.whitebullet, bullet.x, sh.scrY(bullet.y));
+	}
+	
+	for(var idx in sh.enemy_bullets){
+		var bullet = sh.enemy_bullets[idx];
+		sh.con.drawImage(sh.images.purplebullet, bullet.x, sh.scrY(bullet.y));
+	}
+	
 
 }
