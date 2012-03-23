@@ -23,6 +23,15 @@ sh.pCreate = function(prototype, object) {
   return newObject;
 };
 
+// pad number with leading zeros for presentation
+sh.pad = function(number, length) {
+    var str = '' + number;
+    while (str.length < length) {
+        str = '0' + str;
+    }
+    return str;
+}
+
 // gameObject
 
 sh.gameObject = {
@@ -91,6 +100,7 @@ sh.createPlayerBullet = function(x, y){
 	new_bullet.x = x;
 	new_bullet.y = y;
 	sh.player_bullets.push(new_bullet);
+    sh.current_score++;
 }
 
 // enemy bullet
@@ -199,6 +209,8 @@ sh.game_init = function(){
 	sh.imagesLoaded = 0;
 	sh.imageCount = 0;
 	sh.loadImages();
+
+    sh.high_score = 0;
 }
 
 sh.round_init = function(){
@@ -211,6 +223,7 @@ sh.round_init = function(){
 	sh.player.last_shot = -1;
 	
 	sh.player_lives = 1;
+    sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
@@ -299,6 +312,14 @@ sh.update = function(){
 				sh.player_is_immortal = true;
 				sh.player_immortal_starttime = sh.gametime;
 				sh.player_lives--;
+                if(sh.player_lives < 0)
+                {
+                    if(sh.high_score < sh.current_score)
+                    {
+                        sh.high_score = sh.current_score;
+                        sh.current_score = -1;
+                    }
+                }
 			}
 			
 			if(sh.player_is_immortal && sh.gametime - sh.player_immortal_starttime > sh.immortality_duration){
@@ -353,7 +374,7 @@ sh.draw = function(){
 	
 
     sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
-	sh.con.font = "10pt Monospace";
+	sh.con.font = "8pt Monospace";
 	
 	sh.con.fillText("real time " + sh.realtime(), 10, 60);
 	sh.con.fillText("gametime   " + sh.gametime, 10, 75);
@@ -362,17 +383,25 @@ sh.draw = function(){
 	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
 	
 	if(sh.player_lives >= 0){
-		sh.con.font = "12pt Monospace";
-		sh.con.fillText("Lives: " + sh.player_lives, 12, 24);
+		sh.con.font = "7pt Monospace";
+		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
+		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
 		
 		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 == 0){
 			sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
 		}
 	}
 	else{
+        sh.con.textAlign = "center";
 		sh.con.font = "24pt Monospace";
-		sh.con.fillText("GAME OVER", 36, sh.canvas.height*0.5);
+		sh.con.fillText("GAME OVER", sh.canvas.width*0.5, sh.canvas.height*0.5);
 		sh.con.font = "12pt Monospace";
-		sh.con.fillText("PRESS ENTER TO RESTART", 12, sh.canvas.height*0.5 + 24 + 12);
+		sh.con.fillText("PRESS ENTER TO RESTART", sh.canvas.width*0.5, sh.canvas.height*0.5 + 24 + 12);
+        if (sh.current_score < 0)
+        {
+            sh.con.fillText("New high score!", sh.canvas.width*0.5, sh.canvas.height*0.5 + 56 + 12);
+            sh.con.fillText(sh.high_score, sh.canvas.width*0.5, sh.canvas.height*0.5 + 80 + 12);
+        }
+        sh.con.textAlign = "left";
 	}
 }
