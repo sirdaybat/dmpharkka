@@ -336,6 +336,23 @@ sh.draw = function(){
 		back_idx++;
 	}
 	
+	for(var idx in sh.enemies){
+		var enemyship = sh.enemies[idx];
+		sh.con.drawImage(sh.images[enemyship.image], enemyship.x, sh.scrY(enemyship.y));
+	}
+	
+	for(var idx in sh.player_bullets){
+		var bullet = sh.player_bullets[idx];
+		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
+	}
+	
+	for(var idx in sh.enemy_bullets){
+		var bullet = sh.enemy_bullets[idx];
+		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
+	}
+	
+
+    sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "10pt Monospace";
 	
 	sh.con.fillText("real time " + sh.realtime(), 10, 60);
@@ -358,21 +375,4 @@ sh.draw = function(){
 		sh.con.font = "12pt Monospace";
 		sh.con.fillText("PRESS ENTER TO RESTART", 12, sh.canvas.height*0.5 + 24 + 12);
 	}
-	
-	for(var idx in sh.enemies){
-		var enemyship = sh.enemies[idx];
-		sh.con.drawImage(sh.images[enemyship.image], enemyship.x, sh.scrY(enemyship.y));
-	}
-	
-	for(var idx in sh.player_bullets){
-		var bullet = sh.player_bullets[idx];
-		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
-	}
-	
-	for(var idx in sh.enemy_bullets){
-		var bullet = sh.enemy_bullets[idx];
-		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
-	}
-	
-
 }
