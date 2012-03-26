@@ -32,6 +32,36 @@ sh.pad = function(number, length) {
 	return str;
 }
 
+// collision handler
+sh.collisions = {
+	funcs : [],
+	register : function (type, otherType, func) {
+		this.funcs.push([type, otherType, func]);
+	},
+	handle : function (object, otherObject) {
+		if (object.type && otherObject.type)
+		{
+			this.funcs.forEach(function (value, index, arr) {
+			if (value[0] === object.type && value[1] === otherObject.type)
+			{
+				value[2](object, otherObject);
+			}
+			else if (value[1] === object.type && value[0] === otherObject.type)
+			{
+				value[2](otherObject, object);
+			}
+			});
+		}
+	}
+};
+
+sh.collisions.register("enemy", "playerBullet", function (enemy, playerBullet) {
+	enemy.hitpoints -= playerBullet.damage;
+	if (enemy.hitpoints <= 0)
+		enemy.die();
+	playerBullet.die();
+});
+
 // gameObject
 
 sh.gameObject = {
@@ -45,7 +75,11 @@ sh.gameObject = {
 // enemy
 
 sh.enemy = sh.pCreate(sh.gameObject, {
-	hitpoints : 100
+	type : 'enemy',
+	hitpoints : 100,
+	die : function() {
+		sh.enemies[sh.enemies.indexOf(this)] = undefined;
+	}
 });
 
 // fastEnemy
@@ -89,7 +123,11 @@ sh.createSlowEnemy = function(){
 // player bullet
 sh.playerBullet = sh.pCreate(sh.gameObject, {
 	update : function () { this.y += (sh.scrollspeed + 0.3) * sh.update_delay; },
-	damage : 100,
+	die : function() {
+		sh.player_bullets[sh.player_bullets.indexOf(this)] = undefined;
+	},
+	type : 'playerBullet',
+	damage : 50,
 	width : 10,
 	height : 10,
 	image : 'whitebullet'
@@ -106,6 +144,7 @@ sh.createPlayerBullet = function(x, y){
 // enemy bullet
 sh.enemyBullet = sh.pCreate(sh.gameObject, {
 	update : function () { this.y -= 0.2 * sh.update_delay; },
+	type : 'enemyBullet',
 	width : 10,
 	height : 10,
 	image : 'purplebullet'
@@ -135,7 +174,9 @@ sh.gameObjectRect = function(obj){
 }
 
 sh.doGameObjectsCollide = function(obj0, obj1){
-	return sh.doWorldRectsCollide(sh.gameObjectRect(obj0), sh.gameObjectRect(obj1));
+	if (obj0 && obj1)
+		return sh.doWorldRectsCollide(sh.gameObjectRect(obj0), sh.gameObjectRect(obj1));
+	return false;
 }
 
 sh.updateObjects = function(objlist){
@@ -164,6 +205,8 @@ sh.wrdY = function(screen_y){
 
 sh.player = sh.pCreate(sh.gameObject, {
 	image : 'ship',
+	type : 'player',
+	shotInterval : 200,
 	update : function(){
 		if(sh.downkeys[37]) this.x -= 0.2*sh.update_delay;
 		if(sh.downkeys[39]) this.x += 0.2*sh.update_delay;
@@ -176,9 +219,9 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(this.y < sh.view_bottom + this.height - 1) this.y = sh.view_bottom + this.height - 1;
 		if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
 	
-		if(sh.gametime - this.last_shot >= 400){
+
+		if(sh.gametime - this.last_shot >= this.shotInterval){
 			sh.createPlayerBullet(this.x + this.width * 0.5 - 5, this.y + 10);
-		
 			this.last_shot = sh.gametime;
 		}
 	}
@@ -315,6 +358,8 @@ sh.restOfInit = function(){
 }
 
 sh.update = function(){
+	var idxplayer, idxenemy, idxpb, idxeb; // loop vars
+
 	while(sh.gametime < sh.realtime()){
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
@@ -334,6 +379,8 @@ sh.update = function(){
 		sh.removeOutOfScreenObjects(sh.player_bullets);
 		sh.removeOutOfScreenObjects(sh.enemy_bullets);
 		
+		// run collision checks
+		
 		sh.playerCollides = false;
 		for(var idx in sh.enemies){
 			if(sh.doGameObjectsCollide(sh.player, sh.enemies[idx])){
@@ -349,6 +396,23 @@ sh.update = function(){
 				}
 			}
 		}
+		
+		for(idxenemy in sh.enemies){
+			for(idxpb in sh.player_bullets){
+				try {
+				if(sh.doGameObjectsCollide(sh.enemies[idxenemy], sh.player_bullets[idxpb]))
+				{
+					sh.collisions.handle(sh.enemies[idxenemy], sh.player_bullets[idxpb]);
+				}
+				} catch (err) {
+					//alert("length: " + sh.enemies.length + " index: " + idxenemy + " obj: " + sh.enemies[idxenemy]);// + sh.player_bullets[idxpb]);
+				}
+			}
+		}
+
+		sh.enemies = sh.enemies.filter(function(val){return !!val;});
+		sh.enemy_bullets = sh.enemy_bullets.filter(function(val){return !!val;});
+		sh.player_bullets = sh.player_bullets.filter(function(val){return !!val;});
 		
 		if(sh.player_lives >= 0){
 			sh.player.update();
@@ -447,7 +511,6 @@ sh.draw = function(){
 		sh.con.stroke();
 
 	}
-	
 
 	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "8pt Monospace";
