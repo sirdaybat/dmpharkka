@@ -149,6 +149,7 @@ sh.removeOutOfScreenObjects = function(objlist){
 			obj.y < sh.view_bottom - 2*24 || obj.y - obj.height > sh.view_bottom + sh.canvas.height + 2*24){
 			
 			objlist.splice(idx, 1);
+			idx--;
 		}
 	}
 }
@@ -161,32 +162,65 @@ sh.wrdY = function(screen_y){
 	return sh.canvas.height - 1 - screen_y + sh.view_bottom;
 }
 
-sh.player = Object.create(sh.gameObject);
-sh.player.update = function(){
-	if(sh.downkeys[37]) this.x -= 0.2*sh.update_delay;
-	if(sh.downkeys[39]) this.x += 0.2*sh.update_delay;
-	if(sh.downkeys[38]) this.y += 0.2*sh.update_delay;
-	if(sh.downkeys[40]) this.y -= 0.2*sh.update_delay;
-	this.y += sh.scrollspeed*sh.update_delay;
+sh.player = sh.pCreate(sh.gameObject, {
+	image : 'ship',
+	update : function(){
+		if(sh.downkeys[37]) this.x -= 0.2*sh.update_delay;
+		if(sh.downkeys[39]) this.x += 0.2*sh.update_delay;
+		if(sh.downkeys[38]) this.y += 0.2*sh.update_delay;
+		if(sh.downkeys[40]) this.y -= 0.2*sh.update_delay;
+		this.y += sh.scrollspeed*sh.update_delay;
 	
-	if(this.x < 0) this.x = 0;
-	if(this.x > sh.canvas.width - this.width) this.x = sh.canvas.width - this.width;
-	if(this.y < sh.view_bottom + this.height - 1) this.y = sh.view_bottom + this.height - 1;
-	if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
+		if(this.x < 0) this.x = 0;
+		if(this.x > sh.canvas.width - this.width) this.x = sh.canvas.width - this.width;
+		if(this.y < sh.view_bottom + this.height - 1) this.y = sh.view_bottom + this.height - 1;
+		if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
 	
-	if(sh.gametime - sh.player.last_shot >= 400){
-		sh.createPlayerBullet(this.x + this.width * 0.5 - 5, this.y + 10);
+		if(sh.gametime - this.last_shot >= 400){
+			sh.createPlayerBullet(this.x + this.width * 0.5 - 5, this.y + 10);
 		
-		this.last_shot = sh.gametime;
+			this.last_shot = sh.gametime;
+		}
 	}
+});
+
+sh.changeScaling = function(factor){
+	sh.scale_factor = factor;
+	if(sh.scale_factor < 1) sh.scale_factor = 1;
+	sh.canvas.setAttribute("style", "position:relative; width:" +
+		sh.scale_factor*240 + "px; height:" +
+		sh.scale_factor*320 + "px; image-rendering:-moz-crisp-edges; cursor:none");
 }
 
 sh.keyDown = function(evt){
 	sh.downkeys[evt.keyCode] = true;
+	if(evt.keyCode === 33) sh.changeScaling(sh.scale_factor + 1);
+	if(evt.keyCode === 34) sh.changeScaling(sh.scale_factor - 1);
 }
 
 sh.keyUp = function(evt){
 	sh.downkeys[evt.keyCode] = false;
+}
+
+sh.mouseMove = function(evt){
+	if(evt.layerX){
+		sh.mouseX = Math.floor(evt.layerX / sh.scale_factor);
+		sh.mouseY = Math.floor(evt.layerY / sh.scale_factor);
+	}
+	else if(evt.offsetX){
+		sh.mouseX = Math.floor(evt.offsetX / sh.scale_factor);
+		sh.mouseY = Math.floor(evt.offsetY / sh.scale_factor);
+	}
+}
+
+sh.mouseDown = function(evt){
+	sh.mouseMove(evt);
+	sh.is_mouse_down = true;
+}
+
+sh.mouseUp = function(evt){
+	sh.mouseMove(evt);
+	sh.is_mouse_down = false;
 }
 
 sh.realtime = function(){
@@ -210,33 +244,39 @@ sh.game_init = function(){
 	sh.imageCount = 0;
 	sh.loadImages();
 
+	sh.update_delay = 20;
+	sh.draw_delay = 20;
+	sh.downkeys = [];
+	sh.is_mouse_down = false;
+	sh.mouseX = 0;
+	sh.mouseY = 0;
+	sh.scale_factor = 2;
+
 	sh.high_score = 0;
 }
 
 sh.round_init = function(){
 	sh.scrollspeed = 320 / 5 / 1000;
-	sh.update_delay = 30;
-	sh.draw_delay = 30;
 	
 	sh.player.x = sh.canvas.width * 0.5 - sh.player.width * 0.5;
 	sh.player.y = 24 + sh.player.height;
 	sh.player.last_shot = -1;
 	
-	sh.player_lives = 1;
+	sh.player_lives = 666;
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
 	
 	sh.playerCollides = false;
-	
-	sh.downkeys = [];
+
 	sh.enemies = [];
 	sh.enemy_bullets = [];
 	sh.player_bullets = [];
 	sh.last_executed_level_line = -1;
 	sh.gametime = 0;
 	sh.view_bottom = 0;
+	sh.mouse_draw_points = [[0, 0]];
 	sh.starttime = (new Date()).getTime();
 }
 
@@ -262,8 +302,13 @@ sh.waitForImages = function(){
 sh.restOfInit = function(){
 	sh.round_init();
 	
-	window.addEventListener("keydown", sh.keyDown, true);
+	window.addEventListener("keydown", sh.keyDown, false);
 	window.addEventListener("keyup", sh.keyUp, false);
+
+	sh.canvas.addEventListener("mousemove", sh.mouseMove, false);
+	window.addEventListener("mousedown", sh.mouseDown, false);
+	window.addEventListener("mouseup", sh.mouseUp, false);
+
 	
 	window.setInterval("sh.update()", sh.update_delay);
 	window.setInterval("sh.draw()", sh.draw_delay);
@@ -275,7 +320,7 @@ sh.update = function(){
 		
 		sh.updateObjects(sh.enemies);
 		sh.updateObjects(sh.player_bullets);
-		sh.updateObjects(sh.enemy_bullets);
+		sh.updateObjects(sh.enemy_bullets); 
 		
 		var level_line_to_execute = Math.floor((sh.view_bottom + sh.canvas.height) / 24) + 1;
 		while(sh.last_executed_level_line < level_line_to_execute){
@@ -332,6 +377,10 @@ sh.update = function(){
 				return;
 			}
 		}
+
+		if(sh.is_mouse_down) sh.mouse_draw_points[1] = [sh.mouseX, sh.mouseY];
+		else sh.mouse_draw_points = [[sh.mouseX, sh.mouseY]];
+		
 		
 		sh.gametime += sh.update_delay;
 	}
@@ -371,6 +420,33 @@ sh.draw = function(){
 		var bullet = sh.enemy_bullets[idx];
 		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
 	}
+
+
+	if(sh.player_lives >= 0){
+
+		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0){
+			sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
+		}
+		var mousepts = sh.mouse_draw_points.length;
+		if(mousepts > 1){
+			var pt0 = sh.mouse_draw_points[0];
+			var pt1 = sh.mouse_draw_points[1];
+			var angle = Math.atan2(pt1[1] - pt0[1], pt1[0] - pt0[0]);
+			sh.con.fillStyle = "red";
+			sh.con.beginPath();
+			sh.con.arc(pt0[0], pt0[1], 20, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
+			sh.con.arc(pt1[0], pt1[1], 20, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
+			sh.con.globalAlpha = 0.4;
+			sh.con.fill();
+			sh.con.globalAlpha = 1;
+		}
+
+		sh.con.strokeStyle = "red";
+		sh.con.beginPath();
+		sh.con.arc(sh.mouse_draw_points[mousepts - 1][0], sh.mouse_draw_points[mousepts - 1][1], 20, 0, Math.PI*2, false);
+		sh.con.stroke();
+
+	}
 	
 
 	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
@@ -381,15 +457,14 @@ sh.draw = function(){
 	sh.con.fillText("num of enemies " + sh.enemies.length, 10, 90);
 	sh.con.fillText("num of playerbullets " + sh.player_bullets.length, 10, 105);
 	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
+	sh.con.fillText("mouseX " + sh.mouseX + " mouseY " + sh.mouseY, 10, 135);
+	sh.con.fillText("mousedown " + sh.is_mouse_down, 10, 150);
+	sh.con.fillText("mousedraw points " + sh.mouse_draw_points.length, 10, 165);
 	
 	if(sh.player_lives >= 0){
 		sh.con.font = "7pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
-		
-		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 == 0){
-			sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
-		}
 	}
 	else{
 		sh.con.textAlign = "center";
