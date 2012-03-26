@@ -3,11 +3,11 @@
 var sh = {};
 
 sh.gameObjectTypes = Object.freeze({
-    unidentified : 0,
-    playerShip : 100,
-    enemy : 200,
-    playerBullet : 300,
-    enemyBullet : 400
+	unidentified : 0,
+	playerShip : 100,
+	enemy : 200,
+	playerBullet : 300,
+	enemyBullet : 400
 });
 
 sh.none = function () {};
@@ -16,42 +16,42 @@ sh.none = function () {};
 sh.pCreate = function(prototype, object) {
   var newObject = Object.create(prototype);
   for (var prop in object) {
-    if (object.hasOwnProperty(prop)) {
-      newObject[prop] = object[prop];
-    }
+	if (object.hasOwnProperty(prop)) {
+	  newObject[prop] = object[prop];
+	}
   }
   return newObject;
 };
 
 // pad number with leading zeros for presentation
 sh.pad = function(number, length) {
-    var str = '' + number;
-    while (str.length < length) {
-        str = '0' + str;
-    }
-    return str;
+	var str = '' + number;
+	while (str.length < length) {
+		str = '0' + str;
+	}
+	return str;
 }
 
 // gameObject
 
 sh.gameObject = {
-    //type : sh.gameObjectTypes.unidentified,
-    x : 100,
-    y : 100,
-    width : 24,
-    height : 24
+	//type : sh.gameObjectTypes.unidentified,
+	x : 100,
+	y : 100,
+	width : 24,
+	height : 24
 };
 
 // enemy
 
 sh.enemy = sh.pCreate(sh.gameObject, {
-    hitpoints : 100
+	hitpoints : 100
 });
 
 // fastEnemy
 
 sh.fastEnemy = sh.pCreate(sh.enemy, {
-    update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.002) + 1) * 0.5 * (sh.canvas.width - this.width);},
+	update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.002) + 1) * 0.5 * (sh.canvas.width - this.width);},
 	image : 'greenenemy'
 });
 
@@ -66,14 +66,14 @@ sh.createFastEnemy = function(){
 // slowEnemy
 
 sh.slowEnemy = sh.pCreate(sh.enemy, {
-    update : function () {
+	update : function () {
 		this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.001) + 1) * 0.5 * (sh.canvas.width - this.width);
 		if(sh.gametime - this.last_shot > 800){
 			sh.createEnemyBullet(this.x + this.width * 0.5 - 5, this.y - this.height);
 			this.last_shot = sh.gametime;
 		}
 	},
-    hitpoints : 200,
+	hitpoints : 200,
 	image : 'greenenemy'
 });
 
@@ -89,7 +89,7 @@ sh.createSlowEnemy = function(){
 // player bullet
 sh.playerBullet = sh.pCreate(sh.gameObject, {
 	update : function () { this.y += (sh.scrollspeed + 0.3) * sh.update_delay; },
-    damage : 100,
+	damage : 100,
 	width : 10,
 	height : 10,
 	image : 'whitebullet'
@@ -100,7 +100,7 @@ sh.createPlayerBullet = function(x, y){
 	new_bullet.x = x;
 	new_bullet.y = y;
 	sh.player_bullets.push(new_bullet);
-    sh.current_score++;
+	sh.current_score++;
 }
 
 // enemy bullet
@@ -210,7 +210,7 @@ sh.game_init = function(){
 	sh.imageCount = 0;
 	sh.loadImages();
 
-    sh.high_score = 0;
+	sh.high_score = 0;
 }
 
 sh.round_init = function(){
@@ -223,7 +223,7 @@ sh.round_init = function(){
 	sh.player.last_shot = -1;
 	
 	sh.player_lives = 1;
-    sh.current_score = 0;
+	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
@@ -312,14 +312,14 @@ sh.update = function(){
 				sh.player_is_immortal = true;
 				sh.player_immortal_starttime = sh.gametime;
 				sh.player_lives--;
-                if(sh.player_lives < 0)
-                {
-                    if(sh.high_score < sh.current_score)
-                    {
-                        sh.high_score = sh.current_score;
-                        sh.current_score = -1;
-                    }
-                }
+				if(sh.player_lives < 0)
+				{
+					if(sh.high_score < sh.current_score)
+					{
+						sh.high_score = sh.current_score;
+						sh.current_score = -1;
+					}
+				}
 			}
 			
 			if(sh.player_is_immortal && sh.gametime - sh.player_immortal_starttime > sh.immortality_duration){
@@ -373,11 +373,11 @@ sh.draw = function(){
 	}
 	
 
-    sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
+	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "8pt Monospace";
 	
 	sh.con.fillText("real time " + sh.realtime(), 10, 60);
-	sh.con.fillText("gametime   " + sh.gametime, 10, 75);
+	sh.con.fillText("gametime	" + sh.gametime, 10, 75);
 	sh.con.fillText("num of enemies " + sh.enemies.length, 10, 90);
 	sh.con.fillText("num of playerbullets " + sh.player_bullets.length, 10, 105);
 	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
@@ -392,16 +392,16 @@ sh.draw = function(){
 		}
 	}
 	else{
-        sh.con.textAlign = "center";
+		sh.con.textAlign = "center";
 		sh.con.font = "24pt Monospace";
 		sh.con.fillText("GAME OVER", sh.canvas.width*0.5, sh.canvas.height*0.5);
 		sh.con.font = "12pt Monospace";
 		sh.con.fillText("PRESS ENTER TO RESTART", sh.canvas.width*0.5, sh.canvas.height*0.5 + 24 + 12);
-        if (sh.current_score < 0)
-        {
-            sh.con.fillText("New high score!", sh.canvas.width*0.5, sh.canvas.height*0.5 + 56 + 12);
-            sh.con.fillText(sh.high_score, sh.canvas.width*0.5, sh.canvas.height*0.5 + 80 + 12);
-        }
-        sh.con.textAlign = "left";
+		if (sh.current_score < 0)
+		{
+			sh.con.fillText("New high score!", sh.canvas.width*0.5, sh.canvas.height*0.5 + 56 + 12);
+			sh.con.fillText(sh.high_score, sh.canvas.width*0.5, sh.canvas.height*0.5 + 80 + 12);
+		}
+		sh.con.textAlign = "left";
 	}
 }
