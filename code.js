@@ -32,6 +32,11 @@ sh.pad = function(number, length) {
 	return str;
 }
 
+sh.setScrollSpeed = function(factor) {
+	// default speed 320 vert pixels in 5 seconds
+	sh.scrollspeed = factor * 320 / 5 / 1000;
+}
+
 // collision handler
 sh.collisions = {
 	funcs : [],
@@ -160,16 +165,18 @@ sh.createEnemyBullet = function(x, y){
 // triggers, persistent game events
 
 sh.gameEvent = {
-	lifetime : 60,
+	lifetime : -1,
 	update : function() {
-		this.lifetime--;
-		this.onTick();
-		if (this.lifetime < 0)
+		if (this.lifetime > 0)
+			this.lifetime--;
+		if (this.lifetime === 0)
 		{
 			this.atEnd();
 			sh.running_events[sh.running_events.indexOf(this)] = undefined;
 		}
+		this.onTick();
 	},
+	end : function() {this.lifetime = 0;},
 	onStart : function(){},
 	onTick : function(){},
 	atEnd : function(){},
@@ -189,6 +196,7 @@ sh.delay = function(delayTicks, evt) {
 
 sh.showTextEvent = function (text, x, y) {
 	return {
+	lifetime : 60,
 	drawTopLayer : function() {
 		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
 		sh.con.font = "8pt Monospace";
@@ -197,8 +205,20 @@ sh.showTextEvent = function (text, x, y) {
 	};
 }
 
+sh.scrollSpeedModEvent = function(factor) {
+	return {
+	lifetime : 180,
+	onStart : function () {
+		sh.setScrollSpeed(factor);
+	},
+	atEnd : function () {
+		sh.setScrollSpeed(1);
+	}
+	};
+}
+
 sh.winGameEvent = {
-	lifetime : 400,
+	lifetime : 240,
 	onStart : function() {
 		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
 		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 30, 160));
@@ -351,7 +371,7 @@ sh.game_init = function(){
 }
 
 sh.round_init = function(){
-	sh.scrollspeed = 320 / 5 / 1000;
+	sh.setScrollSpeed(1);
 	
 	sh.player.x = sh.canvas.width * 0.5 - sh.player.width * 0.5;
 	sh.player.y = 24 + sh.player.height;
