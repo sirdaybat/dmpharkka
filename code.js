@@ -157,10 +157,10 @@ sh.createEnemyBullet = function(x, y){
 	sh.enemy_bullets.push(new_bullet);
 }
 
-// triggers & persistent game events
+// triggers, persistent game events
 
 sh.gameEvent = {
-	lifetime : 100,
+	lifetime : 60,
 	update : function() {
 		this.lifetime--;
 		this.onTick();
@@ -177,11 +177,14 @@ sh.gameEvent = {
 	drawBottomLayer : function(){}
 }
 
-//sh.showTextEvent = {};
+sh.evt = function(evt) {
+	var newEvent = sh.pCreate(sh.gameEvent, evt);
+	sh.running_events.push(newEvent);
+	sh.running_events[sh.running_events.indexOf(newEvent)].onStart();
+}
 
-sh.trigger = function(evt) {
-	sh.running_events.push(sh.pCreate(sh.gameEvent, evt));
-	sh.running_events[sh.running_events.length-1].onStart();
+sh.delay = function(delayTicks, evt) {
+	sh.delayed_events.push([sh.pCreate(sh.gameEvent, evt), delayTicks]);
 }
 
 sh.showTextEvent = function (text, x, y) {
@@ -197,7 +200,8 @@ sh.showTextEvent = function (text, x, y) {
 sh.winGameEvent = {
 	lifetime : 400,
 	onStart : function() {
-		sh.trigger(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
+		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
+		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 30, 160));
 	},
 	atEnd : function() {
 		sh.gameOver = true;
@@ -368,6 +372,7 @@ sh.round_init = function(){
 	sh.enemy_bullets = [];
 	sh.player_bullets = [];
 	sh.running_events = [];
+	sh.delayed_events = [];
 	sh.last_executed_level_line = -1;
 	sh.gametime = 0;
 	sh.view_bottom = 0;
@@ -419,6 +424,16 @@ sh.update = function(){
 		sh.updateObjects(sh.player_bullets);
 		sh.updateObjects(sh.enemy_bullets); 
 		sh.updateObjects(sh.running_events); 
+
+		// unshelf delayed events
+		for (var idx in sh.delayed_events) {
+			sh.delayed_events[idx][1]--;
+			if (sh.delayed_events[idx][1] === 0)
+			{
+				sh.evt(sh.delayed_events[idx][0]);
+				sh.delayed_events[idx] = undefined;
+			}
+		}
 		
 		var level_line_to_execute = Math.floor((sh.view_bottom + sh.canvas.height) / 24) + 1;
 		while(sh.last_executed_level_line < level_line_to_execute){
@@ -466,6 +481,7 @@ sh.update = function(){
 		sh.enemy_bullets = sh.enemy_bullets.filter(function(val){return !!val;});
 		sh.player_bullets = sh.player_bullets.filter(function(val){return !!val;});
 		sh.running_events = sh.running_events.filter(function(val){return !!val;});
+		sh.delayed_events = sh.delayed_events.filter(function(val){return !!val;});
 		
 		if(!sh.gameOver){
 			sh.player.update();
