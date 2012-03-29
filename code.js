@@ -229,6 +229,32 @@ sh.winGameEvent = {
 	}
 }
 
+sh.areaEvent = function(pt0, pt1){
+	return{
+	lifetime : 100,
+	onStart : function() {
+		this.screen_pt0 = {x : pt0.x, y : sh.scrY(pt0.y)};
+		this.screen_pt1 = {x : pt1.x, y : sh.scrY(pt1.y)};
+		sh.area_pts = [pt0, pt1];
+	},
+	atEnd : function() {
+		sh.area_pts = undefined;
+	},
+	drawBottomLayer : function() {
+		pt0.y = sh.wrdY(this.screen_pt0.y);
+		pt1.y = sh.wrdY(this.screen_pt1.y);
+		var angle = Math.atan2(sh.scrY(pt1.y) - sh.scrY(pt0.y), pt1.x - pt0.x);
+		sh.con.fillStyle = "red";
+		sh.con.beginPath();
+		sh.con.arc(pt0.x, sh.scrY(pt0.y), sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
+		sh.con.arc(pt1.x, sh.scrY(pt1.y), sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
+		sh.con.globalAlpha = 0.4;
+		sh.con.fill();
+		sh.con.globalAlpha = 1;
+	}
+	}
+}
+
 sh.doWorldRectsCollide = function(rect0, rect1){
 	var outsideLeftOrDown = function(rc0, rc1){
 		return rc0.r < rc1.l || rc0.u < rc1.d;
@@ -259,24 +285,17 @@ sh.dist = function(obj0, obj1){
 	return sh.hypot(obj0.x - obj1.x, obj0.y - obj1.y);
 }
 
-sh.isGameObjectInsideMouseSelection = function(obj){
-	var pt = [
-		{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
-		{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
-	];
-	
+sh.isGameObjectInsideArea = function(obj, pt0, pt1){
 	var rad = sh.mouse_selection_radius;
 	var corners = [];
 	var idx;
 	
-	for(idx = 0; idx < sh.mouse_selection_points.length; idx++){
-		if(sh.dist(obj, pt[idx]) <= rad) return true;
-	}
-	var angle = Math.atan2(pt[1].y - pt[0].y, pt[1].x - pt[0].x);
-	corners[0] = {x : pt[0].x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt[0].y + Math.sin(angle + 0.5*Math.PI) * rad};
-	corners[1] = {x : pt[0].x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt[0].y + Math.sin(angle - 0.5*Math.PI) * rad};
-	corners[2] = {x : pt[1].x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt[1].y + Math.sin(angle - 0.5*Math.PI) * rad};
-	corners[3] = {x : pt[1].x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt[1].y + Math.sin(angle + 0.5*Math.PI) * rad};
+	if(sh.dist(obj, pt0) <= rad || sh.dist(obj, pt1) <= rad) return true;
+	var angle = Math.atan2(pt1.y - pt0.y, pt1.x - pt0.x);
+	corners[0] = {x : pt0.x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt0.y + Math.sin(angle + 0.5*Math.PI) * rad};
+	corners[1] = {x : pt0.x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt0.y + Math.sin(angle - 0.5*Math.PI) * rad};
+	corners[2] = {x : pt1.x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt1.y + Math.sin(angle - 0.5*Math.PI) * rad};
+	corners[3] = {x : pt1.x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt1.y + Math.sin(angle + 0.5*Math.PI) * rad};
 
 	for(idx = 0; idx < 4; idx++){
 		var c = [corners[idx], corners[(idx + 1) % 4]];
@@ -294,6 +313,12 @@ sh.updateObjects = function(objlist){
 	for(var idx in objlist) objlist[idx].update();
 }
 
+sh.conditionalUpdateObjects = function(objlist, condition){
+	for(var idx in objlist){
+		if(condition(objlist[idx])) objlist[idx].update();
+	}
+}
+
 sh.removeOutOfScreenObjects = function(objlist){
 	for(var idx = 0; idx < objlist.length; idx++){
 		var obj = objlist[idx];
@@ -306,10 +331,7 @@ sh.removeOutOfScreenObjects = function(objlist){
 	}
 }
 
-sh.scrY = function(world_y){	if(sh.mouse_selection_points.length > 1 && sh.isGameObjectInsideMouseSelection(sh.player)){
-		sh.con.fillText("asdfsa", 10, 180);
-	}
-
+sh.scrY = function(world_y){
 	return sh.canvas.height - 1 - world_y + sh.view_bottom;
 }
 
@@ -438,6 +460,8 @@ sh.round_init = function(){
 	sh.last_executed_level_line = -1;
 	sh.gametime = 0;
 	sh.view_bottom = 0;
+
+	sh.tick = 0;
 	
 	sh.mouse_selection_points = [{x:0, y:0}];
 	sh.mouse_selection_radius = 20;
@@ -486,10 +510,14 @@ sh.update = function(){
 	while(sh.gametime < sh.realtime()){
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
-		sh.updateObjects(sh.enemies);
 		sh.updateObjects(sh.player_bullets);
-		sh.updateObjects(sh.enemy_bullets); 
-		sh.updateObjects(sh.running_events); 
+		sh.updateObjects(sh.running_events);
+		
+		var area_slowdown_decider = function(obj){
+			return sh.tick % 5 == 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
+		}
+		sh.conditionalUpdateObjects(sh.enemies, area_slowdown_decider);
+		sh.conditionalUpdateObjects(sh.enemy_bullets, area_slowdown_decider);
 
 		// unshelf delayed events
 		for (var idx in sh.delayed_events) {
@@ -581,10 +609,19 @@ sh.update = function(){
 		}
 
 		if(sh.is_mouse_down) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
-		else sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
+		else{
+			if(sh.mouse_selection_points.length > 1 && !sh.area_pts){
+				sh.evt(sh.areaEvent(
+					{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
+					{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
+				));
+			}
+			sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
+		}
 		
 		
 		sh.gametime += sh.update_delay;
+		sh.tick++;
 	}
 }
 
@@ -640,15 +677,18 @@ sh.draw = function(){
 			sh.con.beginPath();
 			sh.con.arc(pt0.x, pt0.y, sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
 			sh.con.arc(pt1.x, pt1.y, sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
-			sh.con.globalAlpha = 0.4;
-			sh.con.fill();
-			sh.con.globalAlpha = 1;
+			sh.con.lineTo(
+				pt0.x + Math.cos(angle + Math.PI*0.5) * sh.mouse_selection_radius, 
+				pt0.y + Math.sin(angle + Math.PI*0.5) * sh.mouse_selection_radius
+			);
+			sh.con.stroke();
 		}
-
-		sh.con.strokeStyle = "red";
-		sh.con.beginPath();
-		sh.con.arc(sh.mouse_selection_points[mousepts - 1].x, sh.mouse_selection_points[mousepts - 1].y, 20, 0, Math.PI*2, false);
-		sh.con.stroke();
+		else{
+			sh.con.strokeStyle = "red";
+			sh.con.beginPath();
+			sh.con.arc(sh.mouse_selection_points[mousepts - 1].x, sh.mouse_selection_points[mousepts - 1].y, 20, 0, Math.PI*2, false);
+			sh.con.stroke();
+		}
 
 	}
 
