@@ -34,7 +34,9 @@ sh.pad = function(number, length) {
 
 sh.setScrollSpeed = function(factor) {
 	// default speed 320 vert pixels in 5 seconds
+	sh.scrollSpeedFactor = factor;
 	sh.scrollspeed = factor * 320 / 5 / 1000;
+
 }
 
 // collision handler
@@ -205,15 +207,14 @@ sh.showTextEvent = function (text, x, y) {
 	};
 }
 
-sh.scrollSpeedModEvent = function(factor) {
+sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 	return {
-	lifetime : 180,
-	onStart : function () {
-		sh.setScrollSpeed(factor);
+	lifetime : ticks,
+	onStart : function () {this.initialFactor = sh.scrollSpeedFactor;},
+	onTick : function() {
+		var ratio = (ticks - this.lifetime) / ticks;
+		sh.setScrollSpeed(ratio*factor + (1-ratio)*this.initialFactor);
 	},
-	atEnd : function () {
-		sh.setScrollSpeed(1);
-	}
 	};
 }
 
