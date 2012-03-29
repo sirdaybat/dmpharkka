@@ -157,6 +157,54 @@ sh.createEnemyBullet = function(x, y){
 	sh.enemy_bullets.push(new_bullet);
 }
 
+// triggers & persistent game events
+
+sh.gameEvent = {
+	lifetime : 100,
+	update : function() {
+		this.lifetime--;
+		this.onTick();
+		if (this.lifetime < 0)
+		{
+			this.atEnd();
+			sh.running_events[sh.running_events.indexOf(this)] = undefined;
+		}
+	},
+	onStart : function(){},
+	onTick : function(){},
+	atEnd : function(){},
+	drawTopLayer : function(){},
+	drawBottomLayer : function(){}
+}
+
+//sh.showTextEvent = {};
+
+sh.trigger = function(evt) {
+	sh.running_events.push(sh.pCreate(sh.gameEvent, evt));
+	sh.running_events[sh.running_events.length-1].onStart();
+}
+
+sh.showTextEvent = function (text, x, y) {
+	return {
+	drawTopLayer : function() {
+		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
+		sh.con.font = "8pt Monospace";
+		sh.con.fillText(text, x, y);
+	}
+	};
+}
+
+sh.winGameEvent = {
+	lifetime : 400,
+	onStart : function() {
+		sh.trigger(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
+	},
+	atEnd : function() {
+		sh.gameOver = true;
+		sh.victory = true;
+	}
+}
+
 sh.doWorldRectsCollide = function(rect0, rect1){
 	var outsideLeftOrDown = function(rc0, rc1){
 		return rc0.r < rc1.l || rc0.u < rc1.d;
@@ -234,7 +282,10 @@ sh.removeOutOfScreenObjects = function(objlist){
 	}
 }
 
-sh.scrY = function(world_y){
+sh.scrY = function(world_y){	if(sh.mouse_selection_points.length > 1 && sh.isGameObjectInsideMouseSelection(sh.player)){
+		sh.con.fillText("asdfsa", 10, 180);
+	}
+
 	return sh.canvas.height - 1 - world_y + sh.view_bottom;
 }
 
@@ -326,8 +377,8 @@ sh.game_init = function(){
 	sh.imageCount = 0;
 	sh.loadImages();
 
-	sh.update_delay = 30;
-	sh.draw_delay = 30;
+	sh.update_delay = 17;
+	sh.draw_delay = 9;
 	sh.downkeys = [];
 	sh.is_mouse_down = false;
 	sh.mouseX = 0;
@@ -350,11 +401,15 @@ sh.round_init = function(){
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
 	
+	sh.gameOver = false;
+	sh.victory = false;
+
 	sh.playerCollides = false;
 
 	sh.enemies = [];
 	sh.enemy_bullets = [];
 	sh.player_bullets = [];
+	sh.running_events = [];
 	sh.last_executed_level_line = -1;
 	sh.gametime = 0;
 	sh.view_bottom = 0;
@@ -409,6 +464,7 @@ sh.update = function(){
 		sh.updateObjects(sh.enemies);
 		sh.updateObjects(sh.player_bullets);
 		sh.updateObjects(sh.enemy_bullets); 
+		sh.updateObjects(sh.running_events); 
 		
 		var level_line_to_execute = Math.floor((sh.view_bottom + sh.canvas.height) / 24) + 1;
 		while(sh.last_executed_level_line < level_line_to_execute){
@@ -454,12 +510,12 @@ sh.update = function(){
 				}
 			}
 		}
-
 		sh.enemies = sh.enemies.filter(function(val){return !!val;});
 		sh.enemy_bullets = sh.enemy_bullets.filter(function(val){return !!val;});
 		sh.player_bullets = sh.player_bullets.filter(function(val){return !!val;});
+		sh.running_events = sh.running_events.filter(function(val){return !!val;});
 		
-		if(sh.player_lives >= 0){
+		if(!sh.gameOver){
 			sh.player.update();
 			
 			if(sh.playerCollides && !sh.player_is_immortal){
@@ -468,6 +524,7 @@ sh.update = function(){
 				sh.player_lives--;
 				if(sh.player_lives < 0)
 				{
+					sh.gameOver = true;
 					if(sh.high_score < sh.current_score)
 					{
 						sh.high_score = sh.current_score;
@@ -522,9 +579,18 @@ sh.draw = function(){
 		back_idx++;
 	}
 	
+
+	for(var idx in sh.running_events){
+		sh.running_events[idx].drawBottomLayer();
+	}
+	
 	for(idx in sh.player_bullets) sh.drawGameObject(sh.player_bullets[idx]);
 	for(idx in sh.enemy_bullets) sh.drawGameObject(sh.enemy_bullets[idx]);
 	for(idx in sh.enemies) sh.drawGameObject(sh.enemies[idx]);
+
+	for(var idx in sh.running_events){
+		sh.running_events[idx].drawTopLayer();
+	}
 
 	if(sh.player_lives >= 0){
 
@@ -560,25 +626,24 @@ sh.draw = function(){
 	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
 	sh.con.fillText("mouseX " + sh.mouseX + " mouseY " + sh.mouseY, 10, 135);
 	sh.con.fillText("mousedown " + sh.is_mouse_down, 10, 150);
-	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
 
-	if(sh.player_lives >= 0){
+	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
+	
+	if(!sh.gameOver){
 		sh.con.font = "7pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
-	}
-	else{
+	} else {
 		sh.con.textAlign = "center";
 		sh.con.font = "24pt Monospace";
 		sh.con.fillText("GAME OVER", sh.canvas.width*0.5, sh.canvas.height*0.5);
 		sh.con.font = "12pt Monospace";
 		sh.con.fillText("PRESS ENTER TO RESTART", sh.canvas.width*0.5, sh.canvas.height*0.5 + 24 + 12);
-		if (sh.current_score < 0)
-		{
+		if(sh.current_score < 0){
 			sh.con.fillText("New high score!", sh.canvas.width*0.5, sh.canvas.height*0.5 + 56 + 12);
 			sh.con.fillText(sh.high_score, sh.canvas.width*0.5, sh.canvas.height*0.5 + 80 + 12);
 		}
 		sh.con.textAlign = "left";
 	}
-	
 }
+
