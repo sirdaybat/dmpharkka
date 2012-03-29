@@ -12,7 +12,7 @@ sh.leveldata = [
 ["1000110001", function(){}],
 ["0101010001", function(){}],
 ["0010010001", function(){}],
-["0010010001", function(){sh.trigger(sh.winGameEvent);}],
+["0010010001", function(){sh.evt(sh.winGameEvent);}],
 ["0010010001", function(){}],
 ["0111010001", function(){}],
 ["0111010001", function(){}],
@@ -52,6 +52,6 @@ sh.leveldata = [
 ["0010010001", function(){}],
 ["1111111111", function(){}],
 ["0010010001", function(){}],
-["0111010001", function(){sh.trigger(sh.showTextEvent("Foobar", 50, 200));}],
+["0111010001", function(){sh.evt(sh.showTextEvent("Foobar", 50, 200));}],
 ["1111111111", function(){}]
 ];
