@@ -465,6 +465,10 @@ sh.realtime = function(){
 
 sh.imagepaths = Object.freeze({
 	background: "resources/background-24x24.png",
+	lava1: "resources/lavabackground1-24x24.png",
+	lava2: "resources/lavabackground2-24x24.png",
+	lava3: "resources/lavabackground3-24x24.png",
+	lava4: "resources/lavabackground4-24x24.png",
 	ship: "resources/ship-24x24.png",
 	greenenemy: "resources/greenenemy-24x24.png",
 	purplebullet: "resources/purplebullet-10x10.png",
