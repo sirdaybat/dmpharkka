@@ -1,7 +1,7 @@
 "use strict";
 
 sh.leveldata = [
-["1000110001", function(){}],
+["1000110001", function(){sh.evt(sh.winGameEvent);}],
 ["0101010001", function(){}],
 ["0010010001", function(){}],
 ["0010010001", function(){}],
@@ -11,9 +11,9 @@ sh.leveldata = [
 ["0000010001", function(){}],
 ["1000110001", function(){}],
 ["0101010001", function(){}],
+["0010010001", function(){sh.createTowerEnemy(100);}],
 ["0010010001", function(){}],
-["0010010001", function(){sh.evt(sh.winGameEvent);}],
-["0010010001", function(){}],
+["0010010001", function(){sh.evt(sh.scrollSpeedInterpolateEvent(0.5, 120));}],
 ["0111010001", function(){}],
 ["0111010001", function(){}],
 ["1000110001", function(){}],
