@@ -85,6 +85,7 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 	type : 'enemy',
 	hitpoints : 100,
 	die : function() {
+		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
 });
@@ -225,10 +226,27 @@ sh.delay = function(delayTicks, evt) {
 	sh.delayed_events.push([sh.pCreate(sh.gameEvent, evt), delayTicks]);
 }
 
+sh.popUpTextEvent = function(text, x, y) {
+	return {
+	lifetime : 60,
+	floatOffset : 0,
+	drawTopLayer : function() {
+		sh.con.textAlign = "center";
+		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
+		sh.con.font = "8pt Monospace";
+		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
+	},
+	onTick : function() {
+		this.floatOffset++;
+	}
+	};
+}
+
 sh.showTextEvent = function (text, x, y) {
 	return {
 	lifetime : 60,
 	drawTopLayer : function() {
+		sh.con.textAlign = "center";
 		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
 		sh.con.font = "8pt Monospace";
 		sh.con.fillText(text, x, y);
@@ -250,8 +268,8 @@ sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 sh.winGameEvent = {
 	lifetime : 240,
 	onStart : function() {
-		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
-		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 30, 160));
+		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 120, 160));
+		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 120, 160));
 	},
 	atEnd : function() {
 		sh.gameOver = true;
@@ -749,6 +767,7 @@ sh.draw = function(){
 
 	}
 
+	sh.con.textAlign = "left";
 	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "8pt Monospace";
 	
@@ -762,11 +781,12 @@ sh.draw = function(){
 
 	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
 	
+
 	if(!sh.gameOver){
 		sh.con.font = "7pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
-		var hbwidth = sh.heatcounter / sh.heatcountermax * 50;
+		var hbwidth = Math.max(1, sh.heatcounter / sh.heatcountermax * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
 	} else {
 		sh.con.textAlign = "center";
