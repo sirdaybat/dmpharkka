@@ -64,9 +64,32 @@ sh.collisions = {
 
 sh.collisions.register("enemy", "playerBullet", function (enemy, playerBullet) {
 	enemy.hitpoints -= playerBullet.damage;
+	enemy.hit_starttime = sh.gametime;
 	if (enemy.hitpoints <= 0)
 		enemy.die();
 	playerBullet.die();
+});
+
+sh.handlePlayerDamage = function(){
+	if(!sh.player_is_immortal){
+		sh.player_is_immortal = true;
+		sh.player_immortal_starttime = sh.gametime;
+		sh.player_lives--;
+		if(sh.player_lives < 0){
+			sh.gameOver = true;
+			sh.player.x = -666;
+			sh.handleGameOver();
+		}
+	}
+}
+
+sh.collisions.register("player", "enemyBullet", function (player, enemyBullet) {
+	sh.handlePlayerDamage();
+	enemyBullet.die();
+});
+
+sh.collisions.register("player", "enemy", function (player, enemy) {
+	sh.handlePlayerDamage();
 });
 
 // gameObject
@@ -131,10 +154,12 @@ sh.createSlowEnemy = function(){
 
 sh.towerEnemy = sh.pCreate(sh.enemy, {
 	update : function () {
-		this.angle = sh.angle(this, sh.player);
-		if(sh.gametime - this.last_shot > 50){
-			sh.createEnemyBullet(this.x, this.y, 0.3, this.angle);
-			this.last_shot = sh.gametime;
+		if(!sh.gameOver){
+			this.angle = sh.angle(this, sh.player);
+			if(sh.gametime - this.last_shot > 50){
+				sh.createEnemyBullet(this.x, this.y, 0.3, this.angle);
+				this.last_shot = sh.gametime;
+			}
 		}
 	},
 	hitpoints : 1000,
@@ -177,6 +202,9 @@ sh.enemyBullet = sh.pCreate(sh.gameObject, {
 	update : function () {
 		this.x += Math.sin(this.angle) * this.speed * sh.update_delay;
 		this.y += Math.cos(this.angle) * this.speed * sh.update_delay;
+	},
+	die : function() {
+		sh.enemy_bullets[sh.enemy_bullets.indexOf(this)] = undefined;
 	},
 	type : 'enemyBullet',
 	width : 10,
@@ -484,7 +512,7 @@ sh.round_init = function(){
 	sh.player.y = 24 + sh.player.height;
 	sh.player.last_shot = -1;
 	
-	sh.player_lives = 666;
+	sh.player_lives = 2;
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
@@ -521,13 +549,35 @@ sh.loadImages = function(){
 		sh.imageCount++;
 	}
 	
-	sh.imageWaitInterval = window.setInterval("sh.waitForImages()", 100);
+	sh.imageWaitInterval = window.setInterval("sh.waitForImages()", 10);
+}
+
+sh.createHitImage = function(orig){
+	var newcanvas = document.createElement("canvas");
+	newcanvas.width = orig.width;
+	newcanvas.height = orig.height;
+	var newcon = newcanvas.getContext("2d");
+	
+	newcon.drawImage(orig, 0, 0);
+	
+	var tdata = newcon.getImageData(0, 0, newcanvas.width, newcanvas.height);
+	for(var idx = 0; idx < tdata.data.length; idx++){
+		if(idx % 4 != 3) tdata.data[idx] = 255;
+	}
+	newcon.putImageData(tdata, 0, 0);
+	
+	return newcanvas;
 }
 
 sh.waitForImages = function(){
 	if(sh.imagesLoaded === sh.imageCount){
 		window.clearInterval(sh.imageWaitInterval);
 		Object.freeze(sh.images);
+		sh.hitImages = {};
+		for(var handle in sh.images){
+			sh.hitImages[handle] = sh.createHitImage(sh.images[handle]);
+		}
+		Object.freeze(sh.hitImages);
 		sh.restOfInit();
 	}
 }
@@ -541,7 +591,6 @@ sh.restOfInit = function(){
 	sh.canvas.addEventListener("mousemove", sh.mouseMove, false);
 	window.addEventListener("mousedown", sh.mouseDown, false);
 	window.addEventListener("mouseup", sh.mouseUp, false);
-
 	
 	window.setInterval("sh.update()", sh.update_delay*0.5);
 	window.setInterval("sh.draw()", sh.draw_delay);
@@ -553,6 +602,10 @@ sh.handleGameOver = function(){
 		sh.high_score = sh.current_score;
 		sh.current_score = -1;
 	}
+}
+
+sh.mouseAreaDoable = function(){
+	return !sh.gameOver && sh.heatcounter == sh.heatcountermax && !sh.area_pts;
 }
 
 sh.update = function(){
@@ -595,24 +648,6 @@ sh.update = function(){
 		
 		// run collision checks
 		
-		sh.playerCollides = false;
-		for(var idx in sh.enemies){
-			if(sh.doGameObjectsCollide(sh.player, sh.enemies[idx])){
-				sh.playerCollides = true;
-				break;
-			}
-		}
-		if(!sh.playerCollides){
-			for(var idx in sh.enemy_bullets){	
-	
-	
-				if(sh.doGameObjectsCollide(sh.player, sh.enemy_bullets[idx])){
-					sh.playerCollides = true;
-					break;
-				}
-			}
-		}
-		
 		for(idxenemy in sh.enemies){
 			for(idxpb in sh.player_bullets){
 				try {
@@ -625,26 +660,33 @@ sh.update = function(){
 				}
 			}
 		}
+		
+		for(idxeb in sh.enemy_bullets){
+			if(sh.doGameObjectsCollide(sh.player, sh.enemy_bullets[idxeb])){
+				sh.collisions.handle(sh.player, sh.enemy_bullets[idxeb]);
+			}
+		}
+		
+		for(idxenemy in sh.enemies){
+			if(sh.doGameObjectsCollide(sh.player, sh.enemies[idxenemy])){
+				sh.collisions.handle(sh.player, sh.enemies[idxenemy]);
+			}
+		}
+		
 		sh.enemies = sh.enemies.filter(function(val){return !!val;});
 		sh.enemy_bullets = sh.enemy_bullets.filter(function(val){return !!val;});
 		sh.player_bullets = sh.player_bullets.filter(function(val){return !!val;});
 		sh.running_events = sh.running_events.filter(function(val){return !!val;});
 		sh.delayed_events = sh.delayed_events.filter(function(val){return !!val;});
 		
+		for(idxenemy in sh.enemies){
+			if(sh.enemies[idxenemy].hit_starttime && sh.gametime - sh.enemies[idxenemy].hit_starttime > 100){
+				sh.enemies[idxenemy].hit_starttime = undefined;
+			}
+		}
+		
 		if(!sh.gameOver){
 			sh.player.update();
-			
-			if(sh.playerCollides && !sh.player_is_immortal){
-				sh.player_is_immortal = true;
-				sh.player_immortal_starttime = sh.gametime;
-				sh.player_lives--;
-				if(sh.player_lives < 0)
-				{
-					sh.gameOver = true;
-					sh.handleGameOver();
-				}
-			}
-			
 			if(sh.player_is_immortal && sh.gametime - sh.player_immortal_starttime > sh.immortality_duration){
 				sh.player_is_immortal = false;
 			}
@@ -656,15 +698,14 @@ sh.update = function(){
 			}
 		}
 		
-		
-
-		if(sh.is_mouse_down) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
+		if(sh.is_mouse_down && sh.mouseAreaDoable()) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
 		else{
-			if(sh.mouse_selection_points.length > 1 && !sh.area_pts){
+			if(sh.mouse_selection_points.length > 1 && sh.mouseAreaDoable()){
 				sh.evt(sh.areaEvent(
 					{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
 					{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
 				));
+				sh.heatcounter = sh.heatcountermax * 0.5;
 			}
 			sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
 		}
@@ -676,7 +717,9 @@ sh.update = function(){
 }
 
 sh.drawGameObject = function(obj){
-	var img = sh.images[obj.image];
+	var img;
+	if(!obj.hit_starttime) img = sh.images[obj.image];
+	else img = sh.hitImages[obj.image];
 	if(!obj.angle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
 	else{
 		sh.con.translate(obj.x, sh.scrY(obj.y));
@@ -686,6 +729,7 @@ sh.drawGameObject = function(obj){
 		sh.con.translate(-obj.x, -sh.scrY(obj.y));
 	}
 }
+
 
 sh.draw = function(){
 	var idx;
@@ -722,11 +766,13 @@ sh.draw = function(){
 		sh.running_events[idx].drawTopLayer();
 	}
 
-	if(sh.player_lives >= 0){
-
-		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0) sh.drawGameObject(sh.player);
-		var mousepts = sh.mouse_selection_points.length;
-		if(mousepts > 1){
+	// draw player
+	if(sh.player_lives >= 0 && (!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0)) sh.drawGameObject(sh.player);
+	
+	// draw cursor
+	var mouseptsnum = sh.mouse_selection_points.length;
+	if(sh.mouseAreaDoable()){
+		if(mouseptsnum > 1){
 			var pt0 = sh.mouse_selection_points[0];
 			var pt1 = sh.mouse_selection_points[1];
 			var angle = Math.atan2(pt1.y - pt0.y, pt1.x - pt0.x);
@@ -743,12 +789,22 @@ sh.draw = function(){
 		else{
 			sh.con.strokeStyle = "red";
 			sh.con.beginPath();
-			sh.con.arc(sh.mouse_selection_points[mousepts - 1].x, sh.mouse_selection_points[mousepts - 1].y, 20, 0, Math.PI*2, false);
+			sh.con.arc(sh.mouse_selection_points[mouseptsnum - 1].x, sh.mouse_selection_points[mouseptsnum - 1].y, 20, 0, Math.PI*2, false);
 			sh.con.stroke();
 		}
-
 	}
-
+	else{
+		sh.con.strokeStyle = "red";
+		sh.con.beginPath();
+		sh.con.moveTo(sh.mouse_selection_points[0].x - sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y - sh.mouse_selection_radius*0.7);
+		sh.con.lineTo(sh.mouse_selection_points[0].x + sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y + sh.mouse_selection_radius*0.7);
+		sh.con.stroke();
+		sh.con.moveTo(sh.mouse_selection_points[0].x - sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y + sh.mouse_selection_radius*0.7);
+		sh.con.lineTo(sh.mouse_selection_points[0].x + sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y - sh.mouse_selection_radius*0.7);
+		sh.con.stroke();
+	}
+	
+	
 	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "8pt Monospace";
 	
