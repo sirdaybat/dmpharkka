@@ -110,7 +110,7 @@ sh.slowEnemy = sh.pCreate(sh.enemy, {
 	update : function () {
 		this.x = sh.canvas.width*0.5 + Math.cos((sh.gametime - this.lifestarttime) * 0.001) * 100;
 		if(sh.gametime - this.last_shot > 800){
-			sh.createEnemyBullet(this.x, this.y);
+			sh.createEnemyBullet(this.x, this.y, 0.2);
 			this.last_shot = sh.gametime;
 		}
 	},
@@ -123,6 +123,30 @@ sh.createSlowEnemy = function(){
 	new_enemy.x = 0;
 	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
 	new_enemy.lifestarttime = sh.gametime;
+	new_enemy.last_shot = -1;
+	sh.enemies.push(new_enemy);
+}
+
+// towerEnemy
+
+sh.towerEnemy = sh.pCreate(sh.enemy, {
+	update : function () {
+		this.angle = sh.angle(this, sh.player);
+		if(sh.gametime - this.last_shot > 50){
+			sh.createEnemyBullet(this.x, this.y, 0.3, this.angle);
+			this.last_shot = sh.gametime;
+		}
+	},
+	hitpoints : 1000,
+	image : 'towerenemy'
+});
+
+
+sh.createTowerEnemy = function(x){
+	var new_enemy = Object.create(sh.towerEnemy);
+	new_enemy.x = x;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.lifestarttmie = sh.gametime;
 	new_enemy.last_shot = -1;
 	sh.enemies.push(new_enemy);
 }
@@ -150,17 +174,22 @@ sh.createPlayerBullet = function(x, y){
 
 // enemy bullet
 sh.enemyBullet = sh.pCreate(sh.gameObject, {
-	update : function () { this.y -= 0.2 * sh.update_delay; },
+	update : function () {
+		this.x += Math.sin(this.angle) * this.speed * sh.update_delay;
+		this.y += Math.cos(this.angle) * this.speed * sh.update_delay;
+	},
 	type : 'enemyBullet',
 	width : 10,
 	height : 10,
 	image : 'purplebullet'
 });
 
-sh.createEnemyBullet = function(x, y){
+sh.createEnemyBullet = function(x, y, speed, angle){
 	var new_bullet = Object.create(sh.enemyBullet);
 	new_bullet.x = x;
 	new_bullet.y = y;
+	new_bullet.speed = speed;
+	new_bullet.angle = angle ? angle : Math.PI;
 	sh.enemy_bullets.push(new_bullet);
 }
 
@@ -227,6 +256,7 @@ sh.winGameEvent = {
 	atEnd : function() {
 		sh.gameOver = true;
 		sh.victory = true;
+		sh.handleGameOver();
 	}
 }
 
@@ -284,6 +314,10 @@ sh.hypot = function(xd, yd){
 
 sh.dist = function(obj0, obj1){
 	return sh.hypot(obj0.x - obj1.x, obj0.y - obj1.y);
+}
+
+sh.angle = function(obj0, obj1){
+	return Math.atan2(obj1.x - obj0.x, obj1.y - obj0.y);
 }
 
 sh.isGameObjectInsideArea = function(obj, pt0, pt1){
@@ -412,7 +446,8 @@ sh.imagepaths = Object.freeze({
 	ship: "resources/ship-24x24.png",
 	greenenemy: "resources/greenenemy-24x24.png",
 	purplebullet: "resources/purplebullet-10x10.png",
-	whitebullet: "resources/whitebullet-10x10.png"
+	whitebullet: "resources/whitebullet-10x10.png",
+	towerenemy: "resources/towerenemy-24x24.png"
 });
 
 sh.game_init = function(){
@@ -446,7 +481,7 @@ sh.round_init = function(){
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
-	sh.immortality_duration = 1000;
+	sh.immortality_duration = 1000;	
 	
 	sh.gameOver = false;
 	sh.victory = false;
@@ -504,15 +539,23 @@ sh.restOfInit = function(){
 	window.setInterval("sh.draw()", sh.draw_delay);
 }
 
+sh.handleGameOver = function(){
+	if(sh.high_score < sh.current_score)
+	{
+		sh.high_score = sh.current_score;
+		sh.current_score = -1;
+	}
+}
+
 sh.update = function(){
 	var idxplayer, idxenemy, idxpb, idxeb; // loop vars
 
 	var steps=0;
 	while(sh.gametime < sh.realtime()){
-		sh.view_bottom += sh.scrollspeed*sh.update_delay;
-		
 		sh.updateObjects(sh.player_bullets);
 		sh.updateObjects(sh.running_events);
+		
+		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
 		var area_slowdown_decider = function(obj){
 			return sh.tick % 5 == 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
@@ -590,11 +633,7 @@ sh.update = function(){
 				if(sh.player_lives < 0)
 				{
 					sh.gameOver = true;
-					if(sh.high_score < sh.current_score)
-					{
-						sh.high_score = sh.current_score;
-						sh.current_score = -1;
-					}
+					sh.handleGameOver();
 				}
 			}
 			
@@ -608,6 +647,8 @@ sh.update = function(){
 				return;
 			}
 		}
+		
+		
 
 		if(sh.is_mouse_down) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
 		else{
@@ -628,7 +669,14 @@ sh.update = function(){
 
 sh.drawGameObject = function(obj){
 	var img = sh.images[obj.image];
-	sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
+	if(!obj.angle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
+	else{
+		sh.con.translate(obj.x, sh.scrY(obj.y));
+		sh.con.rotate(obj.angle);
+		sh.con.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+		sh.con.rotate(-obj.angle);
+		sh.con.translate(-obj.x, -sh.scrY(obj.y));
+	}
 }
 
 sh.draw = function(){
