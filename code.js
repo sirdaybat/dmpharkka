@@ -86,6 +86,7 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 	hitpoints : 100,
 	die : function() {
 		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
+		sh.evt(sh.explosionEvent(this.x, this.y));
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
 });
@@ -238,6 +239,16 @@ sh.popUpTextEvent = function(text, x, y) {
 	},
 	onTick : function() {
 		this.floatOffset++;
+	}
+	};
+}
+
+sh.explosionEvent = function(x, y) {
+	return {
+	lifetime : 30,
+	drawBottomLayer : function() {
+		var img = sh.images['explosion'];
+		sh.con.drawImage(img, Math.round(x - img.width / 2), Math.round(sh.scrY(y) - img.height / 2));
 	}
 	};
 }
@@ -478,7 +489,8 @@ sh.imagepaths = Object.freeze({
 	purplebullet: "resources/purplebullet-10x10.png",
 	whitebullet: "resources/whitebullet-10x10.png",
 	towerenemy: "resources/towerenemy-24x24.png",
-	heatbar: "resources/heatbar-50x10.png"
+	heatbar: "resources/heatbar-50x10.png",
+	explosion: "resources/explosion-30x30.png",
 });
 
 sh.game_init = function(){
