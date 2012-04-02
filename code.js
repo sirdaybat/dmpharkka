@@ -361,6 +361,10 @@ sh.player = sh.pCreate(sh.gameObject, {
 			sh.createPlayerBullet(this.x, this.y);
 			this.last_shot = sh.gametime;
 		}
+		if (sh.heatcounter < sh.heatcountermax)
+		{
+			sh.heatcounter = Math.min(sh.heatcounter+sh.heatincrementtick, sh.heatcountermax);
+		}
 	}
 });
 
@@ -412,7 +416,8 @@ sh.imagepaths = Object.freeze({
 	ship: "resources/ship-24x24.png",
 	greenenemy: "resources/greenenemy-24x24.png",
 	purplebullet: "resources/purplebullet-10x10.png",
-	whitebullet: "resources/whitebullet-10x10.png"
+	whitebullet: "resources/whitebullet-10x10.png",
+	heatbar: "resources/heatbar-50x10.png"
 });
 
 sh.game_init = function(){
@@ -433,6 +438,8 @@ sh.game_init = function(){
 	sh.scale_factor = 2;
 	
 	sh.high_score = 0;
+	sh.heatcountermax = 1000;
+	sh.heatincrementtick = 3;
 }
 
 sh.round_init = function(){
@@ -447,6 +454,7 @@ sh.round_init = function(){
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
+	sh.heatcounter = 0;
 	
 	sh.gameOver = false;
 	sh.victory = false;
@@ -710,6 +718,8 @@ sh.draw = function(){
 		sh.con.font = "7pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
+		var hbwidth = sh.heatcounter / sh.heatcountermax * 50;
+		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
 	} else {
 		sh.con.textAlign = "center";
 		sh.con.font = "24pt Monospace";
