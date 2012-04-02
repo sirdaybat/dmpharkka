@@ -92,7 +92,7 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 // fastEnemy
 
 sh.fastEnemy = sh.pCreate(sh.enemy, {
-	update : function () { this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.002) + 1) * 0.5 * (sh.canvas.width - this.width);},
+	update : function () { this.x = sh.canvas.width*0.5 + Math.cos((sh.gametime - this.lifestarttime) * 0.002) * 100;},
 	image : 'greenenemy'
 });
 
@@ -108,9 +108,9 @@ sh.createFastEnemy = function(){
 
 sh.slowEnemy = sh.pCreate(sh.enemy, {
 	update : function () {
-		this.x = (Math.cos((sh.gametime - this.lifestarttime) * 0.001) + 1) * 0.5 * (sh.canvas.width - this.width);
+		this.x = sh.canvas.width*0.5 + Math.cos((sh.gametime - this.lifestarttime) * 0.001) * 100;
 		if(sh.gametime - this.last_shot > 800){
-			sh.createEnemyBullet(this.x + this.width * 0.5 - 5, this.y - this.height);
+			sh.createEnemyBullet(this.x, this.y);
 			this.last_shot = sh.gametime;
 		}
 	},
@@ -230,6 +230,32 @@ sh.winGameEvent = {
 	}
 }
 
+sh.areaEvent = function(pt0, pt1){
+	return{
+	lifetime : 100,
+	onStart : function() {
+		this.screen_pt0 = {x : pt0.x, y : sh.scrY(pt0.y)};
+		this.screen_pt1 = {x : pt1.x, y : sh.scrY(pt1.y)};
+		sh.area_pts = [pt0, pt1];
+	},
+	atEnd : function() {
+		sh.area_pts = undefined;
+	},
+	drawBottomLayer : function() {
+		pt0.y = sh.wrdY(this.screen_pt0.y);
+		pt1.y = sh.wrdY(this.screen_pt1.y);
+		var angle = Math.atan2(sh.scrY(pt1.y) - sh.scrY(pt0.y), pt1.x - pt0.x);
+		sh.con.fillStyle = "red";
+		sh.con.beginPath();
+		sh.con.arc(pt0.x, sh.scrY(pt0.y), sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
+		sh.con.arc(pt1.x, sh.scrY(pt1.y), sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
+		sh.con.globalAlpha = 0.4;
+		sh.con.fill();
+		sh.con.globalAlpha = 1;
+	}
+	}
+}
+
 sh.doWorldRectsCollide = function(rect0, rect1){
 	var outsideLeftOrDown = function(rc0, rc1){
 		return rc0.r < rc1.l || rc0.u < rc1.d;
@@ -239,10 +265,10 @@ sh.doWorldRectsCollide = function(rect0, rect1){
 
 sh.gameObjectRect = function(obj){
 	return {
-		l : obj.x,
-		r : obj.x + obj.width - 1,
-		u : obj.y,
-		d : obj.y - obj.height + 1
+		l : obj.x - obj.width / 2,
+		r : obj.x + obj.width / 2,
+		u : obj.y + obj.height / 2,
+		d : obj.y - obj.height / 2
 	};
 }
 
@@ -252,8 +278,46 @@ sh.doGameObjectsCollide = function(obj0, obj1){
 	return false;
 }
 
+sh.hypot = function(xd, yd){
+	return Math.sqrt(xd*xd + yd*yd);
+}
+
+sh.dist = function(obj0, obj1){
+	return sh.hypot(obj0.x - obj1.x, obj0.y - obj1.y);
+}
+
+sh.isGameObjectInsideArea = function(obj, pt0, pt1){
+	var rad = sh.mouse_selection_radius;
+	var corners = [];
+	var idx;
+	
+	if(sh.dist(obj, pt0) <= rad || sh.dist(obj, pt1) <= rad) return true;
+	var angle = Math.atan2(pt1.y - pt0.y, pt1.x - pt0.x);
+	corners[0] = {x : pt0.x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt0.y + Math.sin(angle + 0.5*Math.PI) * rad};
+	corners[1] = {x : pt0.x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt0.y + Math.sin(angle - 0.5*Math.PI) * rad};
+	corners[2] = {x : pt1.x + Math.cos(angle - 0.5*Math.PI) * rad, y : pt1.y + Math.sin(angle - 0.5*Math.PI) * rad};
+	corners[3] = {x : pt1.x + Math.cos(angle + 0.5*Math.PI) * rad, y : pt1.y + Math.sin(angle + 0.5*Math.PI) * rad};
+
+	for(idx = 0; idx < 4; idx++){
+		var c = [corners[idx], corners[(idx + 1) % 4]];
+		var c0_to_obj = {x : obj.x - c[0].x, y : obj.y - c[0].y};
+		var c0_to_c1_normal = {x : c[1].y - c[0].y, y : c[0].x - c[1].x};
+		if(c0_to_obj.x*c0_to_c1_normal.x + c0_to_obj.y*c0_to_c1_normal.y > 0){
+			return false;
+		}
+	}
+	
+	return true;
+}
+
 sh.updateObjects = function(objlist){
 	for(var idx in objlist) objlist[idx].update();
+}
+
+sh.conditionalUpdateObjects = function(objlist, condition){
+	for(var idx in objlist){
+		if(condition(objlist[idx])) objlist[idx].update();
+	}
 }
 
 sh.removeOutOfScreenObjects = function(objlist){
@@ -287,14 +351,14 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(sh.downkeys[40]) this.y -= 0.2*sh.update_delay;
 		this.y += sh.scrollspeed*sh.update_delay;
 	
-		if(this.x < 0) this.x = 0;
-		if(this.x > sh.canvas.width - this.width) this.x = sh.canvas.width - this.width;
-		if(this.y < sh.view_bottom + this.height - 1) this.y = sh.view_bottom + this.height - 1;
-		if(this.y > sh.view_bottom + sh.canvas.height - 1) this.y = sh.view_bottom + sh.canvas.height - 1;
+		if(this.x < this.width / 2) this.x = this.width / 2;
+		if(this.x > sh.canvas.width - this.width / 2) this.x = sh.canvas.width - this.width / 2;
+		if(this.y < sh.view_bottom + this.height / 2 - 1) this.y =  sh.view_bottom + this.height / 2 - 1;
+		if(this.y > sh.view_bottom + sh.canvas.height - this.height / 2 - 1) this.y = sh.view_bottom + sh.canvas.height - this.height / 2 - 1;
 	
 
 		if(sh.gametime - this.last_shot >= this.shotInterval){
-			sh.createPlayerBullet(this.x + this.width * 0.5 - 5, this.y + 10);
+			sh.createPlayerBullet(this.x, this.y);
 			this.last_shot = sh.gametime;
 		}
 	}
@@ -360,14 +424,14 @@ sh.game_init = function(){
 	sh.imageCount = 0;
 	sh.loadImages();
 
-	sh.update_delay = 20;
-	sh.draw_delay = 20;
+	sh.update_delay = 17;
+	sh.draw_delay = 9;
 	sh.downkeys = [];
 	sh.is_mouse_down = false;
 	sh.mouseX = 0;
 	sh.mouseY = 0;
 	sh.scale_factor = 2;
-
+	
 	sh.high_score = 0;
 }
 
@@ -397,7 +461,12 @@ sh.round_init = function(){
 	sh.last_executed_level_line = -1;
 	sh.gametime = 0;
 	sh.view_bottom = 0;
-	sh.mouse_draw_points = [[0, 0]];
+
+	sh.tick = 0;
+	
+	sh.mouse_selection_points = [{x:0, y:0}];
+	sh.mouse_selection_radius = 20;
+	
 	sh.starttime = (new Date()).getTime();
 }
 
@@ -431,20 +500,25 @@ sh.restOfInit = function(){
 	window.addEventListener("mouseup", sh.mouseUp, false);
 
 	
-	window.setInterval("sh.update()", sh.update_delay);
+	window.setInterval("sh.update()", sh.update_delay*0.5);
 	window.setInterval("sh.draw()", sh.draw_delay);
 }
 
 sh.update = function(){
 	var idxplayer, idxenemy, idxpb, idxeb; // loop vars
 
+	var steps=0;
 	while(sh.gametime < sh.realtime()){
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
-		sh.updateObjects(sh.enemies);
 		sh.updateObjects(sh.player_bullets);
-		sh.updateObjects(sh.enemy_bullets); 
-		sh.updateObjects(sh.running_events); 
+		sh.updateObjects(sh.running_events);
+		
+		var area_slowdown_decider = function(obj){
+			return sh.tick % 5 == 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
+		}
+		sh.conditionalUpdateObjects(sh.enemies, area_slowdown_decider);
+		sh.conditionalUpdateObjects(sh.enemy_bullets, area_slowdown_decider);
 
 		// unshelf delayed events
 		for (var idx in sh.delayed_events) {
@@ -478,7 +552,9 @@ sh.update = function(){
 			}
 		}
 		if(!sh.playerCollides){
-			for(var idx in sh.enemy_bullets){
+			for(var idx in sh.enemy_bullets){	
+	
+	
 				if(sh.doGameObjectsCollide(sh.player, sh.enemy_bullets[idx])){
 					sh.playerCollides = true;
 					break;
@@ -533,16 +609,31 @@ sh.update = function(){
 			}
 		}
 
-		if(sh.is_mouse_down) sh.mouse_draw_points[1] = [sh.mouseX, sh.mouseY];
-		else sh.mouse_draw_points = [[sh.mouseX, sh.mouseY]];
+		if(sh.is_mouse_down) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
+		else{
+			if(sh.mouse_selection_points.length > 1 && !sh.area_pts){
+				sh.evt(sh.areaEvent(
+					{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
+					{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
+				));
+			}
+			sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
+		}
 		
 		
 		sh.gametime += sh.update_delay;
+		sh.tick++;
 	}
-	while(sh.gametime > sh.realtime());
+}
+
+sh.drawGameObject = function(obj){
+	var img = sh.images[obj.image];
+	sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
 }
 
 sh.draw = function(){
+	var idx;
+	
 	sh.con.fillStyle = "black";
 	sh.con.fillRect(0, 0, sh.canvas.width, sh.canvas.height);
 	sh.con.fillStyle = "red";
@@ -550,6 +641,7 @@ sh.draw = function(){
 	var back_start = sh.wrdY(sh.canvas.height - 1);
 	var back_end = sh.wrdY(0);
 	var back_idx = Math.floor(Math.round(back_start) / 24);
+	
 	for(var y = back_start; y <= back_end + 24; y += 24){
 		var screeny = Math.round(sh.scrY(back_idx*24 + 23));
 		for(var i = 0; i < 10; i++){
@@ -561,24 +653,14 @@ sh.draw = function(){
 		back_idx++;
 	}
 	
+
 	for(var idx in sh.running_events){
 		sh.running_events[idx].drawBottomLayer();
 	}
-
-	for(var idx in sh.enemies){
-		var enemyship = sh.enemies[idx];
-		sh.con.drawImage(sh.images[enemyship.image], enemyship.x, sh.scrY(enemyship.y));
-	}
 	
-	for(var idx in sh.player_bullets){
-		var bullet = sh.player_bullets[idx];
-		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
-	}
-	
-	for(var idx in sh.enemy_bullets){
-		var bullet = sh.enemy_bullets[idx];
-		sh.con.drawImage(sh.images[bullet.image], bullet.x, sh.scrY(bullet.y));
-	}
+	for(idx in sh.player_bullets) sh.drawGameObject(sh.player_bullets[idx]);
+	for(idx in sh.enemy_bullets) sh.drawGameObject(sh.enemy_bullets[idx]);
+	for(idx in sh.enemies) sh.drawGameObject(sh.enemies[idx]);
 
 	for(var idx in sh.running_events){
 		sh.running_events[idx].drawTopLayer();
@@ -586,27 +668,28 @@ sh.draw = function(){
 
 	if(sh.player_lives >= 0){
 
-		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0){
-			sh.con.drawImage(sh.images.ship, sh.player.x, sh.scrY(sh.player.y));
-		}
-		var mousepts = sh.mouse_draw_points.length;
+		if(!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0) sh.drawGameObject(sh.player);
+		var mousepts = sh.mouse_selection_points.length;
 		if(mousepts > 1){
-			var pt0 = sh.mouse_draw_points[0];
-			var pt1 = sh.mouse_draw_points[1];
-			var angle = Math.atan2(pt1[1] - pt0[1], pt1[0] - pt0[0]);
+			var pt0 = sh.mouse_selection_points[0];
+			var pt1 = sh.mouse_selection_points[1];
+			var angle = Math.atan2(pt1.y - pt0.y, pt1.x - pt0.x);
 			sh.con.fillStyle = "red";
 			sh.con.beginPath();
-			sh.con.arc(pt0[0], pt0[1], 20, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
-			sh.con.arc(pt1[0], pt1[1], 20, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
-			sh.con.globalAlpha = 0.4;
-			sh.con.fill();
-			sh.con.globalAlpha = 1;
+			sh.con.arc(pt0.x, pt0.y, sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
+			sh.con.arc(pt1.x, pt1.y, sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
+			sh.con.lineTo(
+				pt0.x + Math.cos(angle + Math.PI*0.5) * sh.mouse_selection_radius, 
+				pt0.y + Math.sin(angle + Math.PI*0.5) * sh.mouse_selection_radius
+			);
+			sh.con.stroke();
 		}
-
-		sh.con.strokeStyle = "red";
-		sh.con.beginPath();
-		sh.con.arc(sh.mouse_draw_points[mousepts - 1][0], sh.mouse_draw_points[mousepts - 1][1], 20, 0, Math.PI*2, false);
-		sh.con.stroke();
+		else{
+			sh.con.strokeStyle = "red";
+			sh.con.beginPath();
+			sh.con.arc(sh.mouse_selection_points[mousepts - 1].x, sh.mouse_selection_points[mousepts - 1].y, 20, 0, Math.PI*2, false);
+			sh.con.stroke();
+		}
 
 	}
 
@@ -620,7 +703,8 @@ sh.draw = function(){
 	sh.con.fillText("num of enemybullets " + sh.enemy_bullets.length, 10, 120);
 	sh.con.fillText("mouseX " + sh.mouseX + " mouseY " + sh.mouseY, 10, 135);
 	sh.con.fillText("mousedown " + sh.is_mouse_down, 10, 150);
-	sh.con.fillText("mousedraw points " + sh.mouse_draw_points.length, 10, 165);
+
+	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
 	
 	if(!sh.gameOver){
 		sh.con.font = "7pt Monospace";
