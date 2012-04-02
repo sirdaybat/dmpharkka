@@ -795,7 +795,14 @@ sh.draw = function(){
 		for(var i = 0; i < 10; i++){
 			var real_idx = sh.leveldata.length - 1 - back_idx;
 			if(real_idx >= 0){
-				sh.con.drawImage(sh.images[sh.primitive_tiles[sh.leveldata[real_idx][0].charAt(i)]], i*24, screeny);
+				var tile = sh.primitive_tiles[sh.leveldata[real_idx][0].charAt(i)];
+				if(Array.isArray(tile)){
+					sh.seedRand(back_idx*10 + i);
+					sh.con.drawImage(sh.images[tile[(Math.floor((sh.tick + sh.random())/60)) % tile.length]], i*24, screeny);
+				}
+				else{
+					sh.con.drawImage(sh.images[tile], i*24, screeny);
+				}
 			}
 		}
 		back_idx++;
