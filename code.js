@@ -12,6 +12,16 @@ sh.gameObjectTypes = Object.freeze({
 
 sh.none = function () {};
 
+sh.random_seed = 1;
+sh.seedRand = function(seed) {
+	sh.random_seed = seed;
+}
+
+sh.random = function(){
+	sh.random_seed = (1103515245*sh.random_seed + 12345) % Math.pow(2, 32);
+	return Math.floor(sh.random_seed / 65536);
+}
+
 // helper function: allows using object literals with prototypes
 sh.pCreate = function(prototype, object) {
   var newObject = Object.create(prototype);
@@ -108,6 +118,7 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 	type : 'enemy',
 	hitpoints : 100,
 	die : function() {
+		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
 });
@@ -253,10 +264,27 @@ sh.delay = function(delayTicks, evt) {
 	sh.delayed_events.push([sh.pCreate(sh.gameEvent, evt), delayTicks]);
 }
 
+sh.popUpTextEvent = function(text, x, y) {
+	return {
+	lifetime : 60,
+	floatOffset : 0,
+	drawTopLayer : function() {
+		sh.con.textAlign = "center";
+		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
+		sh.con.font = "8pt Monospace";
+		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
+	},
+	onTick : function() {
+		this.floatOffset++;
+	}
+	};
+}
+
 sh.showTextEvent = function (text, x, y) {
 	return {
 	lifetime : 60,
 	drawTopLayer : function() {
+		sh.con.textAlign = "center";
 		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
 		sh.con.font = "8pt Monospace";
 		sh.con.fillText(text, x, y);
@@ -278,8 +306,8 @@ sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 sh.winGameEvent = {
 	lifetime : 240,
 	onStart : function() {
-		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 30, 160));
-		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 30, 160));
+		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 120, 160));
+		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 120, 160));
 	},
 	atEnd : function() {
 		sh.gameOver = true;
@@ -475,6 +503,10 @@ sh.realtime = function(){
 
 sh.imagepaths = Object.freeze({
 	background: "resources/background-24x24.png",
+	lava1: "resources/lavabackground1-24x24.png",
+	lava2: "resources/lavabackground2-24x24.png",
+	lava3: "resources/lavabackground3-24x24.png",
+	lava4: "resources/lavabackground4-24x24.png",
 	ship: "resources/ship-24x24.png",
 	greenenemy: "resources/greenenemy-24x24.png",
 	purplebullet: "resources/purplebullet-10x10.png",
@@ -484,6 +516,8 @@ sh.imagepaths = Object.freeze({
 });
 
 sh.game_init = function(){
+	sh.seedRand(1);
+	
 	sh.canvas = document.getElementById("can");
 	sh.con = sh.canvas.getContext("2d");
 	
@@ -503,6 +537,16 @@ sh.game_init = function(){
 	sh.high_score = 0;
 	sh.heatcountermax = 1000;
 	sh.heatincrementtick = 3;
+
+	for(var i = 0; i < sh.leveldata.length; i++){
+		for(var j = 0; j < 10; j++){
+			var chr = sh.leveldata[i][0].charAt(j);
+			if(sh.random_tiles[chr]){
+				var primitive = sh.random_tiles[chr][sh.random() % sh.random_tiles[chr].length];
+				sh.leveldata[i][0] = sh.leveldata[i][0].substr(0, j) + primitive + sh.leveldata[i][0].substr(j + 1);
+			}
+		}
+	}
 }
 
 sh.round_init = function(){
@@ -747,7 +791,7 @@ sh.draw = function(){
 		for(var i = 0; i < 10; i++){
 			var real_idx = sh.leveldata.length - 1 - back_idx;
 			if(real_idx >= 0){
-				if(sh.leveldata[real_idx][0].charAt(i) === '1') sh.con.drawImage(sh.images.background, i*24, screeny);
+				sh.con.drawImage(sh.images[sh.primitive_tiles[sh.leveldata[real_idx][0].charAt(i)]], i*24, screeny);
 			}
 		}
 		back_idx++;
@@ -804,7 +848,7 @@ sh.draw = function(){
 		sh.con.stroke();
 	}
 	
-	
+	sh.con.textAlign = "left";
 	sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
 	sh.con.font = "8pt Monospace";
 	
@@ -818,11 +862,12 @@ sh.draw = function(){
 
 	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
 	
+
 	if(!sh.gameOver){
 		sh.con.font = "7pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
-		var hbwidth = sh.heatcounter / sh.heatcountermax * 50;
+		var hbwidth = Math.max(1, sh.heatcounter / sh.heatcountermax * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
 	} else {
 		sh.con.textAlign = "center";
