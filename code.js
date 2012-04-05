@@ -342,7 +342,7 @@ sh.areaEvent = function(pt0, pt1){
 		pt0.y = sh.wrdY(this.screen_pt0.y);
 		pt1.y = sh.wrdY(this.screen_pt1.y);
 		var angle = Math.atan2(sh.scrY(pt1.y) - sh.scrY(pt0.y), pt1.x - pt0.x);
-		sh.con.fillStyle = "red";
+		sh.con.fillStyle = "blue";
 		sh.con.beginPath();
 		sh.con.arc(pt0.x, sh.scrY(pt0.y), sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
 		sh.con.arc(pt1.x, sh.scrY(pt1.y), sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
@@ -445,6 +445,8 @@ sh.player = sh.pCreate(sh.gameObject, {
 	image : 'ship',
 	type : 'player',
 	shotInterval : 200,
+	width : 10,
+	height : 10,
 	update : function(){
 		if(sh.downkeys[37]) this.x -= 0.2*sh.update_delay;
 		if(sh.downkeys[39]) this.x += 0.2*sh.update_delay;
@@ -464,7 +466,21 @@ sh.player = sh.pCreate(sh.gameObject, {
 		}
 		if (sh.heatcounter < sh.heatcountermax)
 		{
-			sh.heatcounter = Math.min(sh.heatcounter+sh.heatincrementtick, sh.heatcountermax);
+			sh.heatcounter += sh.heatincrementtick;
+			
+			var undertile_y = Math.floor(this.y / 24);
+			var real_y = sh.leveldata.length - 1 - undertile_y;
+			if(real_y >= 0){
+				var undertile_x = Math.floor(this.x / 24);
+				var tile = sh.leveldata[real_y][0].substr(undertile_x, 1);
+				if(sh.action_tiles[tile]) sh.action_tiles[tile]();
+			}
+			
+			for(var idx = 0; idx < sh.enemy_bullets.length; idx++){
+				if(sh.dist(sh.enemy_bullets[idx], this) < sh.heat_collection_radius) sh.heatcounter += sh.bullet_heat_value;
+			}
+			
+			sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
 		}
 	}
 });
@@ -552,7 +568,12 @@ sh.game_init = function(){
 	
 	sh.high_score = 0;
 	sh.heatcountermax = 1000;
-	sh.heatincrementtick = 3;
+	sh.heatincrementtick = 2;
+	sh.area_max_length = 100;
+	
+	sh.heat_collection_radius = 30;
+	sh.bullet_heat_value = 3;
+	sh.lava_heat_value = 5;
 
 	for(var i = 0; i < sh.leveldata.length; i++){
 		for(var j = 0; j < 10; j++){
@@ -758,14 +779,26 @@ sh.update = function(){
 			}
 		}
 		
-		if(sh.is_mouse_down && sh.mouseAreaDoable()) sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
+		if(sh.is_mouse_down && sh.mouseAreaDoable()){
+			sh.mouse_selection_points[1] = {x : sh.mouseX, y : sh.mouseY};
+			var arealen = sh.dist(sh.mouse_selection_points[0], sh.mouse_selection_points[1]);
+			if(arealen > sh.area_max_length){
+				sh.mouse_selection_points[1] = {
+					x : sh.mouse_selection_points[0].x + (sh.mouse_selection_points[1].x - sh.mouse_selection_points[0].x) * sh.area_max_length / arealen,
+					y : sh.mouse_selection_points[0].y + (sh.mouse_selection_points[1].y - sh.mouse_selection_points[0].y) * sh.area_max_length / arealen
+				};
+			}
+		}
 		else{
-			if(sh.mouse_selection_points.length > 1 && sh.mouseAreaDoable()){
-				sh.evt(sh.areaEvent(
-					{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
-					{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
-				));
-				sh.heatcounter = sh.heatcountermax * 0.5;
+			if(sh.mouse_selection_points.length > 1){
+				var arealen = sh.dist(sh.mouse_selection_points[0], sh.mouse_selection_points[1]);
+				if(sh.mouseAreaDoable()){
+					sh.evt(sh.areaEvent(
+						{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
+						{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
+					));
+					sh.heatcounter = sh.heatcountermax * (0.5 - arealen / sh.area_max_length * 0.5);
+				}
 			}
 			sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
 		}
@@ -810,6 +843,7 @@ sh.draw = function(){
 				var tile = sh.primitive_tiles[sh.leveldata[real_idx][0].charAt(i)];
 				if(Array.isArray(tile)){
 					sh.seedRand(back_idx*10 + i);
+					for(var randspam = 0; randspam < 4; randspam++) sh.random();
 					sh.con.drawImage(sh.images[tile[(Math.floor((sh.tick + sh.random())/60)) % tile.length]], i*24, screeny);
 				}
 				else{
@@ -834,7 +868,22 @@ sh.draw = function(){
 	}
 
 	// draw player
-	if(sh.player_lives >= 0 && (!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0)) sh.drawGameObject(sh.player);
+	if(sh.player_lives >= 0 && (!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0)){
+		sh.drawGameObject(sh.player);
+		var heat_unit = sh.heatcounter / sh.heatcountermax;
+		var redness = heat_unit*255;
+		var blueness = 255 * (1 - heat_unit);
+		sh.con.strokeStyle = "rgb(" + Math.floor(redness) + ",0," + Math.floor(blueness) + ")";
+		sh.con.lineWidth = 1;
+		sh.con.beginPath();
+		sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, 0, 2*Math.PI, false);
+		sh.con.stroke();
+		
+		sh.con.lineWidth = 5;
+		sh.con.beginPath();
+		sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, Math.PI * (0.5 - heat_unit), Math.PI * (0.5 + heat_unit), false);
+		sh.con.stroke();
+	}
 	
 	// draw cursor
 	var mouseptsnum = sh.mouse_selection_points.length;
@@ -843,7 +892,8 @@ sh.draw = function(){
 			var pt0 = sh.mouse_selection_points[0];
 			var pt1 = sh.mouse_selection_points[1];
 			var angle = Math.atan2(pt1.y - pt0.y, pt1.x - pt0.x);
-			sh.con.fillStyle = "red";
+			sh.con.strokeStyle = "blue";
+			sh.con.lineWidth = 1;
 			sh.con.beginPath();
 			sh.con.arc(pt0.x, pt0.y, sh.mouse_selection_radius, angle + Math.PI*0.5, angle - Math.PI*0.5, false);
 			sh.con.arc(pt1.x, pt1.y, sh.mouse_selection_radius, angle - Math.PI*0.5, angle + Math.PI*0.5, false);
@@ -854,14 +904,16 @@ sh.draw = function(){
 			sh.con.stroke();
 		}
 		else{
-			sh.con.strokeStyle = "red";
+			sh.con.strokeStyle = "blue";
+			sh.con.lineWidth = 1;
 			sh.con.beginPath();
 			sh.con.arc(sh.mouse_selection_points[mouseptsnum - 1].x, sh.mouse_selection_points[mouseptsnum - 1].y, 20, 0, Math.PI*2, false);
 			sh.con.stroke();
 		}
 	}
 	else{
-		sh.con.strokeStyle = "red";
+		sh.con.strokeStyle = "blue";
+		sh.con.lineWidth = 1;
 		sh.con.beginPath();
 		sh.con.moveTo(sh.mouse_selection_points[0].x - sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y - sh.mouse_selection_radius*0.7);
 		sh.con.lineTo(sh.mouse_selection_points[0].x + sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y + sh.mouse_selection_radius*0.7);
@@ -884,6 +936,7 @@ sh.draw = function(){
 	sh.con.fillText("mousedown " + sh.is_mouse_down, 10, 150);
 
 	sh.con.fillText("mousedraw points " + sh.mouse_selection_points.length, 10, 165);
+	if(sh.mouse_selection_points[1]) sh.con.fillText("arealen " + sh.dist(sh.mouse_selection_points[0], sh.mouse_selection_points[1]), 10, 180);
 	
 
 	if(!sh.gameOver){
