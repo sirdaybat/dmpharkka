@@ -82,14 +82,7 @@ sh.collisions.register("enemy", "playerBullet", function (enemy, playerBullet) {
 
 sh.handlePlayerDamage = function(){
 	if(!sh.player_is_immortal){
-		sh.player_is_immortal = true;
-		sh.player_immortal_starttime = sh.gametime;
-		sh.player_lives--;
-		if(sh.player_lives < 0){
-			sh.gameOver = true;
-			sh.player.x = -666;
-			sh.handleGameOver();
-		}
+		sh.player.die();
 	}
 }
 
@@ -508,6 +501,8 @@ sh.player = sh.pCreate(sh.gameObject, {
 	type : 'player',
 	shotInterval : 200,
 	shooting : false,
+	extraDumpModeTicksLeft : 0,
+	extraDumpModeDuration : 180,
 	width : 7,
 	height : 7,
 	update : function(){
@@ -527,8 +522,18 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(this.y < sh.view_bottom + this.height / 2 - 1) this.y =  sh.view_bottom + this.height / 2 - 1;
 		if(this.y > sh.view_bottom + sh.canvas.height - this.height / 2 - 1) this.y = sh.view_bottom + sh.canvas.height - this.height / 2 - 1;
 
+		if(this.extraDumpModeTicksLeft > 0)
+		{
+			this.extraDumpModeTicksLeft--;
+			if (this.extraDumpModeTicksLeft === 0)
+				sh.extracounter = 0;
+		}
 		if(this.shooting)
 		{
+			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft)
+			{
+				this.extraDumpModeTicksLeft = this.extraDumpModeDuration;
+			}
 			if(sh.gametime - this.last_shot >= this.shotInterval){
 				sh.createPlayerBullet(this.x, this.y);
 				this.last_shot = sh.gametime;
@@ -552,6 +557,16 @@ sh.player = sh.pCreate(sh.gameObject, {
 		}
 	},
 	die : function() {
+		this.extraDumpNodeTicksLeft = 0;
+		sh.extracounter = 0;
+		sh.player_is_immortal = true;
+		sh.player_immortal_starttime = sh.gametime;
+		sh.player_lives--;
+		if(sh.player_lives < 0){
+			sh.gameOver = true;
+			sh.player.x = -666;
+			sh.handleGameOver();
+		}
 	},
 });
 
@@ -665,6 +680,7 @@ sh.round_init = function(){
 	sh.player.x = sh.canvas.width * 0.5 - sh.player.width * 0.5;
 	sh.player.y = 24 + sh.player.height;
 	sh.player.last_shot = -1;
+	sh.player.extraDumpNodeTicksLeft = 0;
 	
 	sh.player_lives = 2;
 	sh.current_score = 0;
@@ -676,8 +692,6 @@ sh.round_init = function(){
 	
 	sh.gameOver = false;
 	sh.victory = false;
-
-	sh.playerCollides = false;
 
 	sh.enemies = [];
 	sh.enemy_bullets = [];
@@ -764,15 +778,17 @@ sh.mouseAreaDoable = function(){
 }
 
 sh.increaseCounter = function(amount){
-	if (sh.heatcounter < sh.heatcountermax)
-	{
-		sh.heatcounter += amount;
-		sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
-	}
-	else if (sh.extracounter < sh.extracountermax)
-	{
-		sh.extracounter += amount;
-		sh.extracounter = Math.min(sh.extracounter, sh.extracountermax);
+	if (!sh.player.extraDumpModeTicksLeft) {
+		if (sh.heatcounter < sh.heatcountermax)
+		{
+			sh.heatcounter += amount;
+			sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
+		}
+		else if (sh.extracounter < sh.extracountermax && !sh.player.shooting)
+		{
+			sh.extracounter += amount;
+			sh.extracounter = Math.min(sh.extracounter, sh.extracountermax);
+		}
 	}
 }
 
@@ -1036,10 +1052,13 @@ sh.draw = function(){
 		sh.con.fillText("LIVES " + sh.player_lives, 2, 20);
 		var hbwidth = Math.max(1, sh.heatcounter / sh.heatcountermax * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
-		//if (sh.extracounter)
-		//{
-			sh.con.fillText("EXTRA " + sh.extracounter, 2, 30);
-		//}
+		if (sh.extracounter)
+		{
+			if(sh.player.extraDumpModeTicksLeft)
+				sh.con.fillText("EXTRA " + sh.extracounter + " DUMPING", 2, 30);
+			else
+				sh.con.fillText("EXTRA " + sh.extracounter, 2, 30);
+		}
 	} else {
 		sh.con.textAlign = "center";
 		sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
