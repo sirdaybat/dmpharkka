@@ -42,6 +42,12 @@ sh.pad = function(number, length) {
 	return str;about:startpage
 }
 
+sh.score = function(points){
+	var totalpoints = points * (1 + sh.extracounter / 200);
+	sh.current_score += totalpoints;
+	return totalpoints;
+}
+
 sh.setScrollSpeed = function(factor) {
 	// default speed 320 vert pixels in 5 seconds
 	sh.scrollSpeedFactor = factor;
@@ -110,8 +116,10 @@ sh.gameObject = {
 sh.enemy = sh.pCreate(sh.gameObject, {
 	type : 'enemy',
 	hitpoints : 100,
+	points : 100,
 	die : function() {
-		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
+		var score = sh.score(this.points);
+		sh.evt(sh.popUpTextEvent(score, this.x, this.y));
 		sh.evt(sh.explosionEvent(this.x, this.y));
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
@@ -326,8 +334,8 @@ sh.popUpTextEvent = function(text, x, y) {
 	floatOffset : 0,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
-		sh.con.font = "8pt Monospace";
+		sh.con.fillStyle = "rgba(255, 255, 255, 1.0)";
+		sh.con.font = "10pt Monospace";
 		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
 	},
 	onTick : function() {
@@ -509,6 +517,12 @@ sh.player = sh.pCreate(sh.gameObject, {
 	height : 7,
 	toggleShooting : function(){
 		this.shooting = !this.shooting;
+		if (this.extraDumpModeTicksLeft > 0)
+			this.endExtraDump();
+	},
+	endExtraDump : function(){
+		sh.extracounter = 0;
+		this.shotInterval = this.normalShotInterval;
 	},
 	update : function(){
 		// controls: wasd for qwerty, 5fpg for colemak
@@ -531,10 +545,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		{
 			this.extraDumpModeTicksLeft--;
 			if (this.extraDumpModeTicksLeft === 0) // extra dump end
-			{
-				sh.extracounter = 0;
-				this.shotInterval = this.normalShotInterval;
-			}
+				this.endExtraDump();
 		}
 		if(this.shooting)
 		{
@@ -566,8 +577,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		}
 	},
 	die : function() {
-		this.extraDumpNodeTicksLeft = 0;
-		sh.extracounter = 0;
+		this.endExtraDump();
 		sh.player_is_immortal = true;
 		sh.player_immortal_starttime = sh.gametime;
 		sh.player_lives--;
