@@ -517,12 +517,11 @@ sh.player = sh.pCreate(sh.gameObject, {
 	height : 7,
 	toggleShooting : function(){
 		this.shooting = !this.shooting;
-		if (this.extraDumpModeTicksLeft > 0)
-			this.endExtraDump();
-	},
-	endExtraDump : function(){
-		sh.extracounter = 0;
-		this.shotInterval = this.normalShotInterval;
+		if (this.extraDumpModeTicksLeft > 0) // end extra dump early
+		{
+			sh.extracounter = 0;
+			this.shotInterval = this.normalShotInterval;
+		}
 	},
 	update : function(){
 		// controls: wasd for qwerty, 5fpg for colemak
@@ -544,12 +543,15 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(this.extraDumpModeTicksLeft > 0)
 		{
 			this.extraDumpModeTicksLeft--;
-			if (this.extraDumpModeTicksLeft === 0) // extra dump end
-				this.endExtraDump();
+			if (this.extraDumpModeTicksLeft === 0) // end extra dump
+			{
+				sh.extracounter = 0;
+				this.shotInterval = this.normalShotInterval;
+			}
 		}
 		if(this.shooting)
 		{
-			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft) // extra dump start
+			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft) // start extra dump
 			{
 				this.extraDumpModeTicksLeft = this.extraDumpModeDuration;
 				this.shotInterval = this.extraShotInterval;
@@ -577,7 +579,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		}
 	},
 	die : function() {
-		this.endExtraDump();
+		sh.extracounter = Math.floor(sh.extracounter * 0.5);
 		sh.player_is_immortal = true;
 		sh.player_immortal_starttime = sh.gametime;
 		sh.player_lives--;
