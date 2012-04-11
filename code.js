@@ -334,9 +334,12 @@ sh.popUpTextEvent = function(text, x, y) {
 	floatOffset : 0,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(255, 255, 255, 1.0)";
-		sh.con.font = "10pt Monospace";
+		sh.con.fillStyle = "rgba(255, 255, 255, 0.7)";
+		sh.con.linewidth = 1;
+		sh.con.strokeStyle = "rgba(0, 0, 0, 0.9)";
+		sh.con.font = "Bold Italic 24pt Impact";
 		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
+		sh.con.strokeText(text, x, sh.scrY(y)-(this.floatOffset/6));
 	},
 	onTick : function() {
 		this.floatOffset++;
@@ -519,8 +522,9 @@ sh.player = sh.pCreate(sh.gameObject, {
 		this.shooting = !this.shooting;
 		if (this.extraDumpModeTicksLeft > 0) // end extra dump early
 		{
-			sh.extracounter = 0;
+			this.extraDumpModeTicksLeft = 0;
 			this.shotInterval = this.normalShotInterval;
+			sh.extracounter = 0;
 		}
 	},
 	update : function(){
@@ -579,6 +583,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		}
 	},
 	die : function() {
+		this.extraDumpModeTicksLeft = 0;
 		sh.extracounter = Math.floor(sh.extracounter * 0.5);
 		sh.player_is_immortal = true;
 		sh.player_immortal_starttime = sh.gametime;
