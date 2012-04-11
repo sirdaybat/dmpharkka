@@ -446,8 +446,8 @@ sh.player = sh.pCreate(sh.gameObject, {
 	type : 'player',
 	shotInterval : 200,
 	shooting : false,
-	width : 10,
-	height : 10,
+	width : 7,
+	height : 7,
 	update : function(){
 		// controls: wasd for qwerty, 5fpg for colemak
 		if(sh.downkeys[65]) this.x -= 0.2*sh.update_delay;
@@ -547,7 +547,7 @@ sh.imagepaths = Object.freeze({
 	lava2: "resources/lavabackground2-24x24.png",
 	lava3: "resources/lavabackground3-24x24.png",
 	lava4: "resources/lavabackground4-24x24.png",
-	ship: "resources/ship-24x24.png",
+	ship: "resources/ship-30x30.png",
 	greenenemy: "resources/greenenemy-24x24.png",
 	purplebullet: "resources/purplebullet-10x10.png",
 	whitebullet: "resources/whitebullet-10x10.png",
