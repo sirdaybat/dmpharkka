@@ -43,7 +43,7 @@ sh.pad = function(number, length) {
 }
 
 sh.score = function(points){
-	var totalpoints = points * (1 + sh.extracounter / 200);
+	var totalpoints = Math.floor(points * (1 + sh.extracounter / 200));
 	sh.current_score += totalpoints;
 	return totalpoints;
 }
