@@ -74,8 +74,8 @@ sh.collisions = {
 
 sh.collisions.register("enemy", "playerBullet", function (enemy, playerBullet) {
 	enemy.hitpoints -= playerBullet.damage;
-	enemy.hit_starttime = sh.gametime;
-	if (enemy.hitpoints <= 0)
+	if(!enemy.indestructible) enemy.hit_starttime = sh.gametime;
+	if (!enemy.indestructible && enemy.hitpoints <= 0)
 		enemy.die();
 	playerBullet.die();
 });
@@ -177,6 +177,7 @@ sh.towerEnemy = sh.pCreate(sh.enemy, {
 				this.last_shot = this.owntime;
 			}
 		}
+		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
 	hitpoints : 1000,
@@ -210,6 +211,7 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 			}
 			
 		}
+		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
 	width : 48,
@@ -230,7 +232,7 @@ sh.createBigTowerEnemy = function(x){
 //horizontalTurret
 sh.horizontalTurret = sh.pCreate(sh.enemy, {
 	update : function() {
-		if(this.owntime - this.last_shot > 70){
+		if(this.owntime - this.last_shot > 60){
 			sh.createEnemyBullet(this.x, this.y, 0.2, this.rightside ? 1.5*Math.PI : 0.5*Math.PI);
 			this.last_shot = this.owntime;
 		}
@@ -249,6 +251,152 @@ sh.createHorizontalTurret = function(rightside){
 	new_enemy.rightside = rightside;
 	sh.enemies.push(new_enemy);
 }
+
+
+sh.boringEnemy = sh.pCreate(sh.enemy, {
+	update : function() {
+		sh.seedRand(this.randseed);
+		var rnd = sh.random();
+		var scaler = Math.min(1, this.owntime / 3000);
+		
+		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.001 + rnd) * 100;
+		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.001*2 + rnd)*40);
+		
+		if(!sh.gameOver){
+			if(this.owntime - this.last_shot > 1000 || this.shoot_phase > 0 && this.owntime - this.last_shot > 50){
+				sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player));
+				
+				this.last_shot = this.owntime;
+				this.shoot_phase++;
+			}
+			if(this.shoot_phase > 3) this.shoot_phase = 0;
+		}
+		
+		this.owntime += sh.update_delay;
+	},
+	hitpoints : 100,
+	image : 'greenenemy'
+});
+
+sh.createBoringEnemy = function(){
+	var new_enemy = Object.create(sh.boringEnemy);
+	new_enemy.x = 120;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.owntime = 0;
+	new_enemy.last_shot = -1;
+	new_enemy.shoot_phase = 0;
+	new_enemy.randseed = sh.gametime;
+	sh.enemies.push(new_enemy);
+}
+
+
+sh.crossShooterEnemy = sh.pCreate(sh.enemy, {
+	update : function(){
+		sh.seedRand(this.randseed);
+		var rnd = sh.random();
+		var scaler = Math.min(1, this.owntime / 1000);
+		
+		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003 + rnd) * 60;
+		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2 + rnd)*40);
+
+		if(this.owntime - this.last_shot > 50){
+			for(var i = 0; i < 4; i++) sh.createEnemyBullet(this.x, this.y, 0.2, i*2*Math.PI/4 + this.owntime*0.001);
+			this.last_shot = this.owntime;
+		}
+		this.owntime += sh.update_delay;
+	},
+	hitpoints: 500,
+	image : 'greenenemy'
+});
+
+sh.createCrossShooterEnemy = function(){
+	var new_enemy = Object.create(sh.crossShooterEnemy);
+	new_enemy.x = 120;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.owntime = 0;
+	new_enemy.last_shot = -1;
+	new_enemy.randseed = sh.gametime;
+	sh.enemies.push(new_enemy);
+}
+
+//boss and the gang
+sh.bossCore = sh.pCreate(sh.enemy, {
+	update : function(){
+		var scaler = Math.min(1, this.owntime / 3000);
+		
+		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
+		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2)*30);
+		
+		
+		this.owntime += sh.update_delay;
+	},
+	die : function() {
+		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
+		sh.evt(sh.explosionEvent(this.x, this.y));
+		sh.enemies[sh.enemies.indexOf(this)] = undefined;
+		
+		for(var i in sh.enemies){
+			if(sh.enemies[i] && sh.enemies[i].parent && sh.enemies[i].parent === this) sh.enemies[i].die();
+		}
+		
+		sh.evt(sh.scrollSpeedInterpolateEvent(1, 2*60));
+	},
+	width : 48,
+	height : 48,
+	hitpoints : 1000,
+	image : 'bigtowerenemy'
+});
+
+sh.bossIndestructiblePart = sh.pCreate(sh.enemy, {
+	update : function(){
+		this.x = this.parent.x + 32*Math.sin(this.angle);
+		this.y = this.parent.y + 32*Math.cos(this.angle);
+	},
+	indestructible : true,
+	image : 'ship'
+});
+
+sh.createBossIndestructiblePart = function(parent, angle){
+	var new_part = Object.create(sh.bossIndestructiblePart);
+	new_part.parent = parent;
+	new_part.angle = angle;
+	new_part.x = new_part.parent.x + 32*Math.sin(new_part.angle);
+	new_part.y = new_part.parent.y + 32*Math.cos(new_part.angle);
+	sh.enemies.push(new_part);
+}
+
+sh.bossDestructiblePart = sh.pCreate(sh.enemy, {
+	update : function(){
+		this.x = this.parent.x;
+		this.y = this.parent.y - 24;
+	},
+	hitpoints : 1000,
+	image : 'towerenemy'
+});
+
+sh.createBossDestructiblePart = function(parent){
+	var new_part = Object.create(sh.bossDestructiblePart);
+	new_part.parent = parent;
+	new_part.x = parent.x;
+	new_part.y = parent.y - 40;
+	sh.enemies.push(new_part);
+}
+
+sh.createBoss = function(){
+	var core = Object.create(sh.bossCore);
+	core.x = 120;
+	core.y = sh.view_bottom + sh.canvas.height + 48;
+	core.owntime = 0;
+	core.last_shot = -1;
+	sh.enemies.push(core);
+	sh.createBossIndestructiblePart(core, 2.3);
+	sh.createBossIndestructiblePart(core, -2.3);
+	sh.createBossDestructiblePart(core);
+}
+
 
 // player bullet
 sh.playerBullet = sh.pCreate(sh.gameObject, {
@@ -291,7 +439,7 @@ sh.createEnemyBullet = function(x, y, speed, angle){
 	new_bullet.x = x;
 	new_bullet.y = y;
 	new_bullet.speed = speed;
-	new_bullet.angle = angle ? angle : Math.PI;
+	new_bullet.angle = angle !== undefined ? angle : Math.PI;
 	sh.enemy_bullets.push(new_bullet);
 }
 
@@ -760,7 +908,7 @@ sh.handleGameOver = function(){
 }
 
 sh.mouseAreaDoable = function(){
-	return !sh.gameOver && sh.heatcounter == sh.heatcountermax && !sh.area_pts;
+	return !sh.gameOver && sh.heatcounter >= sh.heatcountermax && !sh.area_pts;
 }
 
 sh.increaseCounter = function(amount){
@@ -787,7 +935,7 @@ sh.update = function(){
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
 		
 		var area_slowdown_decider = function(obj){
-			return sh.tick % 5 == 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
+			return sh.tick % 5 === 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
 		}
 		sh.conditionalUpdateObjects(sh.enemies, area_slowdown_decider);
 		sh.conditionalUpdateObjects(sh.enemy_bullets, area_slowdown_decider);
@@ -818,13 +966,8 @@ sh.update = function(){
 		
 		for(idxenemy in sh.enemies){
 			for(idxpb in sh.player_bullets){
-				try {
-				if(sh.doGameObjectsCollide(sh.enemies[idxenemy], sh.player_bullets[idxpb]))
-				{
+				if(sh.doGameObjectsCollide(sh.enemies[idxenemy], sh.player_bullets[idxpb])){
 					sh.collisions.handle(sh.enemies[idxenemy], sh.player_bullets[idxpb]);
-				}
-				} catch (err) {
-					//alert("length: " + sh.enemies.length + " index: " + idxenemy + " obj: " + sh.enemies[idxenemy]);// + sh.player_bullets[idxpb]);
 				}
 			}
 		}
@@ -900,12 +1043,13 @@ sh.drawGameObject = function(obj){
 	var img;
 	if(!obj.hit_starttime) img = sh.images[obj.image];
 	else img = sh.hitImages[obj.image];
-	if(!obj.angle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
+		
+	if(!obj.drawAngle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
 	else{
 		sh.con.translate(obj.x, sh.scrY(obj.y));
-		sh.con.rotate(obj.angle);
+		sh.con.rotate(obj.drawAngle);
 		sh.con.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
-		sh.con.rotate(-obj.angle);
+		sh.con.rotate(-obj.drawAngle);
 		sh.con.translate(-obj.x, -sh.scrY(obj.y));
 	}
 }
@@ -1009,6 +1153,7 @@ sh.draw = function(){
 		sh.con.lineTo(sh.mouse_selection_points[0].x + sh.mouse_selection_radius*0.7, sh.mouse_selection_points[0].y - sh.mouse_selection_radius*0.7);
 		sh.con.stroke();
 	}
+	
 	
 	/*
 	sh.con.textAlign = "left";
