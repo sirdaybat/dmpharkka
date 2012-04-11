@@ -499,12 +499,17 @@ sh.wrdY = function(screen_y){
 sh.player = sh.pCreate(sh.gameObject, {
 	image : 'ship',
 	type : 'player',
+	normalShotInterval : 200,
+	extraShotInterval : 100,
 	shotInterval : 200,
 	shooting : false,
 	extraDumpModeTicksLeft : 0,
 	extraDumpModeDuration : 180,
 	width : 7,
 	height : 7,
+	toggleShooting : function(){
+		this.shooting = !this.shooting;
+	},
 	update : function(){
 		// controls: wasd for qwerty, 5fpg for colemak
 		if(sh.downkeys[65]) this.x -= 0.2*sh.update_delay;
@@ -525,14 +530,18 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(this.extraDumpModeTicksLeft > 0)
 		{
 			this.extraDumpModeTicksLeft--;
-			if (this.extraDumpModeTicksLeft === 0)
+			if (this.extraDumpModeTicksLeft === 0) // extra dump end
+			{
 				sh.extracounter = 0;
+				this.shotInterval = this.normalShotInterval;
+			}
 		}
 		if(this.shooting)
 		{
-			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft)
+			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft) // extra dump start
 			{
 				this.extraDumpModeTicksLeft = this.extraDumpModeDuration;
+				this.shotInterval = this.extraShotInterval;
 			}
 			if(sh.gametime - this.last_shot >= this.shotInterval){
 				sh.createPlayerBullet(this.x, this.y);
@@ -582,7 +591,7 @@ sh.keyDown = function(evt){
 	sh.downkeys[evt.keyCode] = true;
 	if(evt.keyCode === 33) sh.changeScaling(sh.scale_factor + 1);
 	if(evt.keyCode === 34) sh.changeScaling(sh.scale_factor - 1);
-	if(evt.keyCode === 32) sh.player.shooting = !sh.player.shooting;
+	if(evt.keyCode === 32) sh.player.toggleShooting();
 }
 
 sh.keyUp = function(evt){
