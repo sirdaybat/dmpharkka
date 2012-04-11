@@ -93,8 +93,8 @@ sh.handlePlayerDamage = function(){
 }
 
 sh.collisions.register("player", "enemyBullet", function (player, enemyBullet) {
+	if(!sh.player_is_immortal) enemyBullet.die();
 	sh.handlePlayerDamage();
-	enemyBullet.die();
 });
 
 sh.collisions.register("player", "enemy", function (player, enemy) {
@@ -117,11 +117,14 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 	type : 'enemy',
 	hitpoints : 100,
 	points : 100,
+	atDeath : function() {},
 	die : function() {
 		var score = sh.score(this.points);
 		sh.evt(sh.popUpTextEvent(score, this.x, this.y));
 		sh.evt(sh.explosionEvent(this.x, this.y));
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
+		
+		this.atDeath();
 	}
 });
 
@@ -331,14 +334,16 @@ sh.bossCore = sh.pCreate(sh.enemy, {
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
 			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2)*30);
 		
+		if(this.owntime - this.last_shot > 70){
+			sh.createEnemyBullet(this.x, this.y, 0.2, Math.PI + 0.15 + Math.cos(this.owntime*0.01)*0.02);
+			sh.createEnemyBullet(this.x, this.y, 0.2, Math.PI - 0.15 - Math.cos(this.owntime*0.01)*0.02);
+			
+			this.last_shot = this.owntime;
+		}
 		
 		this.owntime += sh.update_delay;
 	},
-	die : function() {
-		sh.evt(sh.popUpTextEvent("DEAD", this.x, this.y));
-		sh.evt(sh.explosionEvent(this.x, this.y));
-		sh.enemies[sh.enemies.indexOf(this)] = undefined;
-		
+	atDeath : function() {
 		for(var i in sh.enemies){
 			if(sh.enemies[i] && sh.enemies[i].parent && sh.enemies[i].parent === this) sh.enemies[i].die();
 		}
@@ -355,6 +360,8 @@ sh.bossIndestructiblePart = sh.pCreate(sh.enemy, {
 	update : function(){
 		this.x = this.parent.x + 32*Math.sin(this.angle);
 		this.y = this.parent.y + 32*Math.cos(this.angle);
+		
+		this.owntime += sh.update_delay;
 	},
 	indestructible : true,
 	image : 'ship'
@@ -366,6 +373,8 @@ sh.createBossIndestructiblePart = function(parent, angle){
 	new_part.angle = angle;
 	new_part.x = new_part.parent.x + 32*Math.sin(new_part.angle);
 	new_part.y = new_part.parent.y + 32*Math.cos(new_part.angle);
+	new_part.owntime = 0;
+	new_part.last_shot = -1;
 	sh.enemies.push(new_part);
 }
 
@@ -373,6 +382,8 @@ sh.bossDestructiblePart = sh.pCreate(sh.enemy, {
 	update : function(){
 		this.x = this.parent.x;
 		this.y = this.parent.y - 24;
+		
+		this.owntime += sh.update_delay;
 	},
 	hitpoints : 1000,
 	image : 'towerenemy'
@@ -383,6 +394,8 @@ sh.createBossDestructiblePart = function(parent){
 	new_part.parent = parent;
 	new_part.x = parent.x;
 	new_part.y = parent.y - 40;
+	new_part.owntime = 0;
+	new_part.last_shot = -1;
 	sh.enemies.push(new_part);
 }
 
