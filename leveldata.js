@@ -14,10 +14,10 @@ sh.primitive_tiles = {
 }
 
 sh.action_tiles = {
-	'1' : function(){ sh.heatcounter += sh.lava_heat_value; },
-	'2' : function(){ sh.heatcounter += sh.lava_heat_value; },
-	'3' : function(){ sh.heatcounter += sh.lava_heat_value; },
-	'4' : function(){ sh.heatcounter += sh.lava_heat_value; }
+	'1' : function(){ sh.increaseCounter(sh.lava_heat_value); },
+	'2' : function(){ sh.increaseCounter(sh.lava_heat_value); },
+	'3' : function(){ sh.increaseCounter(sh.lava_heat_value); },
+	'4' : function(){ sh.increaseCounter(sh.lava_heat_value); },
 }
 
 sh.random_tiles = {

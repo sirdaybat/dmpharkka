@@ -507,44 +507,52 @@ sh.player = sh.pCreate(sh.gameObject, {
 	image : 'ship',
 	type : 'player',
 	shotInterval : 200,
+	shooting : false,
 	width : 10,
 	height : 10,
 	update : function(){
-		if(sh.downkeys[37]) this.x -= 0.2*sh.update_delay;
-		if(sh.downkeys[39]) this.x += 0.2*sh.update_delay;
-		if(sh.downkeys[38]) this.y += 0.2*sh.update_delay;
-		if(sh.downkeys[40]) this.y -= 0.2*sh.update_delay;
+		// controls: wasd for qwerty, 5fpg for colemak
+		if(sh.downkeys[65]) this.x -= 0.2*sh.update_delay;
+		else if(sh.downkeys[70]) this.x -= 0.2*sh.update_delay;
+		if(sh.downkeys[68]) this.x += 0.2*sh.update_delay;
+		else if(sh.downkeys[71]) this.x += 0.2*sh.update_delay;
+		if(sh.downkeys[87]) this.y += 0.2*sh.update_delay;
+		else if(sh.downkeys[53]) this.y += 0.2*sh.update_delay;
+		if(sh.downkeys[83]) this.y -= 0.2*sh.update_delay;
+		else if(sh.downkeys[80]) this.y -= 0.2*sh.update_delay;
 		this.y += sh.scrollspeed*sh.update_delay;
 	
 		if(this.x < this.width / 2) this.x = this.width / 2;
 		if(this.x > sh.canvas.width - this.width / 2) this.x = sh.canvas.width - this.width / 2;
 		if(this.y < sh.view_bottom + this.height / 2 - 1) this.y =  sh.view_bottom + this.height / 2 - 1;
 		if(this.y > sh.view_bottom + sh.canvas.height - this.height / 2 - 1) this.y = sh.view_bottom + sh.canvas.height - this.height / 2 - 1;
-	
 
-		if(sh.gametime - this.last_shot >= this.shotInterval){
-			sh.createPlayerBullet(this.x, this.y);
-			this.last_shot = sh.gametime;
-		}
-		if (sh.heatcounter < sh.heatcountermax)
+		if(this.shooting)
 		{
-			sh.heatcounter += sh.heatincrementtick;
-			
-			var undertile_y = Math.floor(this.y / 24);
-			var real_y = sh.leveldata.length - 1 - undertile_y;
-			if(real_y >= 0){
-				var undertile_x = Math.floor(this.x / 24);
-				var tile = sh.leveldata[real_y][0].substr(undertile_x, 1);
-				if(sh.action_tiles[tile]) sh.action_tiles[tile]();
+			if(sh.gametime - this.last_shot >= this.shotInterval){
+				sh.createPlayerBullet(this.x, this.y);
+				this.last_shot = sh.gametime;
 			}
-			
-			for(var idx = 0; idx < sh.enemy_bullets.length; idx++){
-				if(sh.dist(sh.enemy_bullets[idx], this) < sh.heat_collection_radius) sh.heatcounter += sh.bullet_heat_value;
-			}
-			
-			sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
 		}
-	}
+
+		sh.increaseCounter(sh.heatincrementtick);
+			
+		var undertile_y = Math.floor(this.y / 24);
+		var real_y = sh.leveldata.length - 1 - undertile_y;
+		if(real_y >= 0){
+			var undertile_x = Math.floor(this.x / 24);
+			var tile = sh.leveldata[real_y][0].substr(undertile_x, 1);
+			if(sh.action_tiles[tile]) sh.action_tiles[tile]();
+		}
+			
+		for(var idx = 0; idx < sh.enemy_bullets.length; idx++){
+			if(sh.dist(sh.enemy_bullets[idx], this) < sh.heat_collection_radius) {
+				sh.increaseCounter(sh.bullet_heat_value);
+			}
+		}
+	},
+	die : function() {
+	},
 });
 
 sh.changeScaling = function(factor){
@@ -559,6 +567,7 @@ sh.keyDown = function(evt){
 	sh.downkeys[evt.keyCode] = true;
 	if(evt.keyCode === 33) sh.changeScaling(sh.scale_factor + 1);
 	if(evt.keyCode === 34) sh.changeScaling(sh.scale_factor - 1);
+	if(evt.keyCode === 32) sh.player.shooting = !sh.player.shooting;
 }
 
 sh.keyUp = function(evt){
@@ -631,6 +640,7 @@ sh.game_init = function(){
 	
 	sh.high_score = 0;
 	sh.heatcountermax = 1000;
+	sh.extracountermax = 1000;
 	sh.heatincrementtick = 2;
 	sh.area_max_length = 100;
 	
@@ -661,7 +671,8 @@ sh.round_init = function(){
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
-	sh.heatcounter = 1000;
+	sh.heatcounter = 0;
+	sh.extracounter = 0;
 	
 	sh.gameOver = false;
 	sh.victory = false;
@@ -750,6 +761,19 @@ sh.handleGameOver = function(){
 
 sh.mouseAreaDoable = function(){
 	return !sh.gameOver && sh.heatcounter == sh.heatcountermax && !sh.area_pts;
+}
+
+sh.increaseCounter = function(amount){
+	if (sh.heatcounter < sh.heatcountermax)
+	{
+		sh.heatcounter += amount;
+		sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
+	}
+	else if (sh.extracounter < sh.extracountermax)
+	{
+		sh.extracounter += amount;
+		sh.extracounter = Math.min(sh.extracounter, sh.extracountermax);
+	}
 }
 
 sh.update = function(){
@@ -1007,11 +1031,15 @@ sh.draw = function(){
 	if(!sh.gameOver){
 		sh.con.textAlign = "left";
 		sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
-		sh.con.font = "7pt Monospace";
+		sh.con.font = "8pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
-		sh.con.fillText("Lives: " + sh.player_lives, 6, 24);
+		sh.con.fillText("LIVES " + sh.player_lives, 2, 20);
 		var hbwidth = Math.max(1, sh.heatcounter / sh.heatcountermax * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
+		//if (sh.extracounter)
+		//{
+			sh.con.fillText("EXTRA " + sh.extracounter, 2, 30);
+		//}
 	} else {
 		sh.con.textAlign = "center";
 		sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
