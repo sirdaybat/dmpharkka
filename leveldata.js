@@ -156,7 +156,7 @@ sh.leveldata = [
 ["RRRRRRRRRR", function(){}],
 ["RRRRRRRRRR", function(){}],
 ["RRRRRRRRRR", function(){}],
-["RRRRRRRRRR", function(){sh.createCrossShooterEnemy();}],
+["RRRRRRRRRR", function(){sh.createSpreadShooterEnemy();}],
 ["RRRRRRRRRR", function(){}],
 ["RRRRRRRRRR", function(){}],
 ["RRRRRRRRRR", function(){}],
