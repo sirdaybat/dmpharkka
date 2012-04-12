@@ -125,7 +125,7 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 		this.atDeath();
 		
 		var score = sh.score(this.points);
-		sh.evt(sh.popUpTextEvent(score, this.x, this.y));
+		sh.evt(sh.popUpTextEvent(score, this.x, this.y, 60, "rgba(255, 255, " + (80 + Math.floor(175*(1-sh.heat_counter/sh.heat_counter_max))) + ", 0.8)", "Italic " + (16+(Math.floor(15*sh.heat_counter/sh.heat_counter_max))) + "pt Impact"));
 		if(!(this.prev_x === this.x && this.prev_y === this.y)){
 			sh.evt(sh.massiveExplosionEvent(this.x, this.y, this.explosionSize,
 					Math.atan2(this.x - this.prev_x, this.y - this.prev_y)));
@@ -185,15 +185,15 @@ sh.towerEnemy = sh.pCreate(sh.enemy, {
 	update : function () {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
-			if(this.owntime - this.last_shot > 50){
-				sh.createEnemyBullet(this.x, this.y, 0.3, this.angle);
+			if(this.owntime - this.last_shot > 1000){
+				sh.createEnemyBullet(this.x, this.y, 0.1, this.angle);
 				this.last_shot = this.owntime;
 			}
 		}
 		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 1000,
+	hitpoints : 300,
 	image : 'towerenemy'
 });
 
@@ -213,11 +213,11 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 	update : function() {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
-			if(this.owntime - this.last_shot > 1000){
+			if(this.owntime - this.last_shot > 2000){
 				
 				for(var i = 0; i < 5; i++){
 					for(var j = 0; j < 5; j++){
-						sh.createEnemyBullet(this.x, this.y, 0.2 + i*0.02, this.angle + (j - 2) * 0.13);
+						sh.createEnemyBullet(this.x, this.y, 0.07 + i*0.01, this.angle + (j - 2) * 0.17);
 					}
 				}
 				this.last_shot = this.owntime;
@@ -345,7 +345,7 @@ sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 			
 		if(this.owntime - this.last_shot > 1500){
 			for(var i = 0; i < 11; i++){
-				sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player) + (i - 5) * 0.2);
+				sh.createEnemyBullet(this.x, this.y, 0.1, sh.angle(this, sh.player) + (i - 5) * 0.3);
 			}
 			this.last_shot = this.owntime;
 		}
@@ -535,7 +535,7 @@ sh.createBoss = function(){
 
 // player bullet
 sh.playerBullet = sh.pCreate(sh.gameObject, {
-	update : function () { this.y += (sh.scrollspeed + 0.3) * sh.update_delay; },
+	update : function () { this.y += (sh.scrollspeed + 0.4) * sh.update_delay; },
 	die : function() {
 		sh.player_bullets[sh.player_bullets.indexOf(this)] = undefined;
 	},
@@ -551,7 +551,6 @@ sh.createPlayerBullet = function(x, y){
 	new_bullet.x = x;
 	new_bullet.y = y;
 	sh.player_bullets.push(new_bullet);
-	sh.current_score++;
 }
 
 // enemy bullet
@@ -610,18 +609,21 @@ sh.delay = function(delayTicks, evt) {
 	sh.delayed_events.push([sh.pCreate(sh.gameEvent, evt), delayTicks]);
 }
 
-sh.popUpTextEvent = function(text, x, y) {
+sh.popUpTextEvent = function(text, x, y, ticks, fillcolor, font, strokecolor) {
 	return {
-	lifetime : 60,
+	lifetime : ticks || 60,
 	floatOffset : 0,
 	drawTopLayer : function() {
+		var fadeOutTicks = 20;
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(255, 255, 100, 0.7)";
+		sh.con.fillStyle = fillcolor || "rgba(255, 255, 255, 1)";
 		sh.con.linewidth = 1;
-		sh.con.strokeStyle = "rgba(0, 0, 0, 0.9)";
-		sh.con.font = "Italic 16pt Impact";
+		sh.con.strokeStyle = strokecolor || "rgba(0, 0, 0, 0.6)";
+		sh.con.font = font || "Italic 16pt Impact";
+		sh.con.globalAlpha = (this.lifetime < fadeOutTicks) ? this.lifetime / fadeOutTicks : 1;
 		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
 		sh.con.strokeText(text, x, sh.scrY(y)-(this.floatOffset/6));
+		sh.con.globalAlpha = 1;
 	},
 	onTick : function() {
 		this.floatOffset++;
@@ -646,10 +648,12 @@ sh.massiveExplosionEvent = function(x, y, size, dir) {
 
 sh.explosionEvent = function(x, y, dir) {
 	return {
-	lifetime : 30,
+	lifetime : 25,
 	direction : dir,
 	drawBottomLayer : function() {
 		var img = sh.images['explosion'];
+		var fadeOutTicks = 10;
+		sh.con.globalAlpha = (this.lifetime < fadeOutTicks) ? this.lifetime / fadeOutTicks : 1;
 		if(this.direction === undefined){
 			sh.con.drawImage(img, Math.round(x - img.width / 2), Math.round(sh.scrY(y) - img.height / 2));
 		}
@@ -658,6 +662,7 @@ sh.explosionEvent = function(x, y, dir) {
 				Math.round(x + (30 - this.lifetime)*Math.sin(this.direction)*0.4 - img.width / 2),
 				Math.round(sh.scrY(y + (30 - this.lifetime)*Math.cos(this.direction)*0.4) - img.height / 2));
 		}
+		sh.con.globalAlpha = 1;
 	}
 	};
 }
@@ -827,11 +832,13 @@ sh.player = sh.pCreate(sh.gameObject, {
 	normal_shot_interval : 200,
 	extra_shot_interval : 100,
 	shot_interval : 200,
+	movement_noshoot : 0.17,
+	movement_shoot : 0.1,
 	shooting : false,
 	overload_ticks_left : 0,
 	overload_duration : 120,
-	width : 7,
-	height : 7,
+	width : 5,
+	height : 5,
 	toggleShooting : function(){
 		this.shooting = !this.shooting;
 	},
@@ -840,15 +847,26 @@ sh.player = sh.pCreate(sh.gameObject, {
 		return this.overload_ticks_left / this.overload_duration;
 	},
 	update : function(){
-		// controls: wasd for qwerty, 5fpg for colemak
-		if(sh.downkeys[65]) this.x -= 0.2*sh.update_delay;
-		else if(sh.downkeys[70]) this.x -= 0.2*sh.update_delay;
-		if(sh.downkeys[68]) this.x += 0.2*sh.update_delay;
-		else if(sh.downkeys[71]) this.x += 0.2*sh.update_delay;
-		if(sh.downkeys[87]) this.y += 0.2*sh.update_delay;
-		else if(sh.downkeys[53]) this.y += 0.2*sh.update_delay;
-		if(sh.downkeys[83]) this.y -= 0.2*sh.update_delay;
-		else if(sh.downkeys[80]) this.y -= 0.2*sh.update_delay;
+		// controls: arrow keys; alternate: wasd (qwerty) 5fpg (colemak)
+		
+		var speed = this.shooting ? this.movement_shoot : this.movement_noshoot;
+
+		// left / a / f
+		// right / d / g
+		if(sh.downkeys[37] || sh.downkeys[65] || sh.downkeys[70]) {
+			this.x -= speed * sh.update_delay;
+		} else if(sh.downkeys[39] || sh.downkeys[68] || sh.downkeys[71]) {
+			this.x += speed * sh.update_delay;
+		}
+
+		// up / w / 5
+		// down / s / p
+		if(sh.downkeys[38] || sh.downkeys[87] || sh.downkeys[53]) {
+			this.y += speed * sh.update_delay;
+		} else if(sh.downkeys[40] || sh.downkeys[83] || sh.downkeys[80]) {
+			this.y -= speed * sh.update_delay;
+		}
+
 		this.y += sh.scrollspeed*sh.update_delay;
 	
 		if(this.x < this.width / 2) this.x = this.width / 2;
