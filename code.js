@@ -43,7 +43,7 @@ sh.pad = function(number, length) {
 }
 
 sh.score = function(points){
-	var totalpoints = Math.floor(points * (1 + sh.extracounter / 200));
+	var totalpoints = Math.floor(points * (1 + sh.heat_counter / 200));
 	sh.current_score += totalpoints;
 	return totalpoints;
 }
@@ -495,10 +495,10 @@ sh.popUpTextEvent = function(text, x, y) {
 	floatOffset : 0,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(255, 255, 255, 0.7)";
+		sh.con.fillStyle = "rgba(255, 255, 100, 0.7)";
 		sh.con.linewidth = 1;
 		sh.con.strokeStyle = "rgba(0, 0, 0, 0.9)";
-		sh.con.font = "Bold Italic 24pt Impact";
+		sh.con.font = "Italic 16pt Impact";
 		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
 		sh.con.strokeText(text, x, sh.scrY(y)-(this.floatOffset/6));
 	},
@@ -685,7 +685,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		{
 			this.extraDumpModeTicksLeft = 0;
 			this.shotInterval = this.normalShotInterval;
-			sh.extracounter = 0;
+			sh.heat_counter = 0;
 		}
 	},
 	update : function(){
@@ -710,13 +710,13 @@ sh.player = sh.pCreate(sh.gameObject, {
 			this.extraDumpModeTicksLeft--;
 			if (this.extraDumpModeTicksLeft === 0) // end extra dump
 			{
-				sh.extracounter = 0;
+				sh.heat_counter = 0;
 				this.shotInterval = this.normalShotInterval;
 			}
 		}
 		if(this.shooting)
 		{
-			if(sh.extracounter > 0 && !this.extraDumpModeTicksLeft) // start extra dump
+			if(sh.heat_counter > 0 && !this.extraDumpModeTicksLeft) // start extra dump
 			{
 				this.extraDumpModeTicksLeft = this.extraDumpModeDuration;
 				this.shotInterval = this.extraShotInterval;
@@ -727,7 +727,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 			}
 		}
 
-		sh.increaseCounter(sh.heatincrementtick);
+		sh.increaseSpecialCounter(sh.special_increment_tick);
 			
 		var undertile_y = Math.floor(this.y / 24);
 		var real_y = sh.leveldata.length - 1 - undertile_y;
@@ -745,7 +745,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 	},
 	die : function() {
 		this.extraDumpModeTicksLeft = 0;
-		sh.extracounter = Math.floor(sh.extracounter * 0.5);
+		sh.heat_counter = Math.floor(sh.heat_counter * 0.5);
 		sh.player_is_immortal = true;
 		sh.player_immortal_starttime = sh.gametime;
 		sh.player_lives--;
@@ -841,9 +841,9 @@ sh.game_init = function(){
 	sh.scale_factor = 2;
 	
 	sh.high_score = 0;
-	sh.heatcountermax = 1000;
-	sh.extracountermax = 1000;
-	sh.heatincrementtick = 2;
+	sh.special_counter_max = 1000;
+	sh.heat_counter_max = 1000;
+	sh.special_increment_tick = 2;
 	sh.area_max_length = 100;
 	
 	sh.heat_collection_radius = 30;
@@ -874,8 +874,8 @@ sh.round_init = function(){
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
 	sh.immortality_duration = 1000;
-	sh.heatcounter = 0;
-	sh.extracounter = 0;
+	sh.special_counter = 0;
+	sh.heat_counter = 0;
 	
 	sh.gameOver = false;
 	sh.victory = false;
@@ -961,21 +961,24 @@ sh.handleGameOver = function(){
 }
 
 sh.mouseAreaDoable = function(){
-	return !sh.gameOver && sh.heatcounter >= sh.heatcountermax && !sh.area_pts;
+	return !sh.gameOver && sh.special_counter >= sh.special_counter_max && !sh.area_pts;
 }
 
 sh.increaseCounter = function(amount){
 	if (!sh.player.extraDumpModeTicksLeft) {
-		if (sh.heatcounter < sh.heatcountermax)
+		if (sh.heat_counter < sh.heat_counter_max && !sh.player.shooting)
 		{
-			sh.heatcounter += amount;
-			sh.heatcounter = Math.min(sh.heatcounter, sh.heatcountermax);
+			sh.heat_counter += amount;
+			sh.heat_counter = Math.min(sh.heat_counter, sh.heat_counter_max);
 		}
-		else if (sh.extracounter < sh.extracountermax && !sh.player.shooting)
-		{
-			sh.extracounter += amount;
-			sh.extracounter = Math.min(sh.extracounter, sh.extracountermax);
-		}
+	}
+}
+
+sh.increaseSpecialCounter = function(amount){
+	if (sh.special_counter < sh.special_counter_max)
+	{
+		sh.special_counter += amount;
+		sh.special_counter = Math.min(sh.special_counter, sh.special_counter_max);
 	}
 }
 
@@ -1082,7 +1085,7 @@ sh.update = function(){
 						{x : sh.mouse_selection_points[0].x, y : sh.wrdY(sh.mouse_selection_points[0].y)},
 						{x : sh.mouse_selection_points[1].x, y : sh.wrdY(sh.mouse_selection_points[1].y)}
 					));
-					sh.heatcounter = sh.heatcountermax * (0.5 - arealen / sh.area_max_length * 0.5);
+					sh.special_counter = sh.special_counter_max * (0.5 - arealen / sh.area_max_length * 0.5);
 				}
 			}
 			sh.mouse_selection_points = [{x : sh.mouseX, y : sh.mouseY}];
@@ -1156,7 +1159,7 @@ sh.draw = function(){
 	// draw player
 	if(sh.player_lives >= 0 && (!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0)){
 		sh.drawGameObject(sh.player);
-		var heat_unit = sh.heatcounter / sh.heatcountermax;
+		var heat_unit = sh.heat_counter / sh.heat_counter_max;
 		var redness = heat_unit*255;
 		var blueness = 255 * (1 - heat_unit);
 		sh.con.strokeStyle = "rgb(" + Math.floor(redness) + ",0," + Math.floor(blueness) + ")";
@@ -1234,14 +1237,14 @@ sh.draw = function(){
 		sh.con.font = "8pt Monospace";
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("LIVES " + sh.player_lives, 2, 20);
-		var hbwidth = Math.max(1, sh.heatcounter / sh.heatcountermax * 50);
+		var hbwidth = Math.max(1, sh.special_counter / sh.special_counter_max * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
-		if (sh.extracounter)
+		if (sh.heat_counter)
 		{
 			if(sh.player.extraDumpModeTicksLeft)
-				sh.con.fillText("EXTRA " + sh.extracounter + " DUMPING", 2, 30);
+				sh.con.fillText("EXTRA " + sh.heat_counter + " DUMPING", 2, 30);
 			else
-				sh.con.fillText("EXTRA " + sh.extracounter, 2, 30);
+				sh.con.fillText("EXTRA " + sh.heat_counter, 2, 30);
 		}
 	} else {
 		sh.con.textAlign = "center";
