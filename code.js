@@ -518,17 +518,26 @@ sh.explosionEvent = function(x, y) {
 	};
 }
 
-sh.showTextEvent = function (text, x, y) {
+// text, x, y mandatory, rest optional
+sh.showTextEvent = function (text, x, y, ticks, color, font) {
 	return {
-	lifetime : 60,
+	lifetime : ticks || 60,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(0, 255, 255, 0.8)";
-		sh.con.font = "8pt Monospace";
+		sh.con.fillStyle = color || "rgba(0, 255, 255, 0.8)";
+		sh.con.font = font || "8pt Monospace";
 		sh.con.fillText(text, x, y);
 	}
 	};
 }
+
+sh.createBlinkingText = function (repeat, text, x, y, ticks, color, font) {
+	sh.evt(sh.showTextEvent(text, x, y, ticks, color, font));
+	for(var i=0; i<repeat-1; i++) {
+		sh.delay(2*ticks*i, sh.showTextEvent(text, x, y, ticks, color, font));
+	}
+}
+
 
 sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 	return {
@@ -671,22 +680,20 @@ sh.wrdY = function(screen_y){
 sh.player = sh.pCreate(sh.gameObject, {
 	image : 'ship',
 	type : 'player',
-	normalShotInterval : 200,
-	extraShotInterval : 100,
-	shotInterval : 200,
+	normal_shot_interval : 200,
+	extra_shot_interval : 100,
+	shot_interval : 200,
 	shooting : false,
-	extraDumpModeTicksLeft : 0,
-	extraDumpModeDuration : 180,
+	overload_ticks_left : 0,
+	overload_duration : 120,
 	width : 7,
 	height : 7,
 	toggleShooting : function(){
 		this.shooting = !this.shooting;
-		if (this.extraDumpModeTicksLeft > 0) // end extra dump early
-		{
-			this.extraDumpModeTicksLeft = 0;
-			this.shotInterval = this.normalShotInterval;
-			sh.heat_counter = 0;
-		}
+	},
+	overloaded : function() {return this.overload_ticks_left > 0;},
+	overloadPercentLeft : function() {
+		return this.overload_ticks_left / this.overload_duration;
 	},
 	update : function(){
 		// controls: wasd for qwerty, 5fpg for colemak
@@ -705,28 +712,29 @@ sh.player = sh.pCreate(sh.gameObject, {
 		if(this.y < sh.view_bottom + this.height / 2 - 1) this.y =  sh.view_bottom + this.height / 2 - 1;
 		if(this.y > sh.view_bottom + sh.canvas.height - this.height / 2 - 1) this.y = sh.view_bottom + sh.canvas.height - this.height / 2 - 1;
 
-		if(this.extraDumpModeTicksLeft > 0)
-		{
-			this.extraDumpModeTicksLeft--;
-			if (this.extraDumpModeTicksLeft === 0) // end extra dump
-			{
-				sh.heat_counter = 0;
-				this.shotInterval = this.normalShotInterval;
+		if(this.overloaded()) {
+			this.overload_ticks_left--;
+			if (!this.overloaded()) { // at end of overload
 			}
 		}
-		if(this.shooting)
+		else if(sh.heat_counter === sh.heat_counter_max) { // at beginning of overload
+			this.overload_ticks_left = this.overload_duration;
+			sh.heat_counter = 0;
+			sh.createBlinkingText(7, "OVERLOAD", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
+		}
+		if(this.shooting && !this.overloaded())
 		{
-			if(sh.heat_counter > 0 && !this.extraDumpModeTicksLeft) // start extra dump
-			{
-				this.extraDumpModeTicksLeft = this.extraDumpModeDuration;
-				this.shotInterval = this.extraShotInterval;
-			}
-			if(sh.gametime - this.last_shot >= this.shotInterval){
+			sh.decreaseCounter(sh.shooting_decrement_tick);
+
+			var ratio = (sh.heat_counter_max - sh.heat_counter) / sh.heat_counter_max;
+			this.shot_interval = Math.floor((1-ratio) * this.normal_shot_interval + ratio * this.extra_shot_interval);
+			if(sh.gametime - this.last_shot >= this.shot_interval) {
 				sh.createPlayerBullet(this.x, this.y);
 				this.last_shot = sh.gametime;
 			}
 		}
 
+		sh.increaseCounter(sh.heat_increment_tick);
 		sh.increaseSpecialCounter(sh.special_increment_tick);
 			
 		var undertile_y = Math.floor(this.y / 24);
@@ -843,12 +851,15 @@ sh.game_init = function(){
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
 	sh.heat_counter_max = 1000;
-	sh.special_increment_tick = 2;
 	sh.area_max_length = 100;
+
+	sh.special_increment_tick = 2;
+	sh.heat_increment_tick = 1;
+	sh.shooting_decrement_tick = 4;
 	
 	sh.heat_collection_radius = 30;
-	sh.bullet_heat_value = 3;
-	sh.lava_heat_value = 5;
+	sh.bullet_heat_value = 1;
+	sh.lava_heat_value = 4;
 
 	for(var i = 0; i < sh.leveldata.length; i++){
 		for(var j = 0; j < 10; j++){
@@ -965,12 +976,19 @@ sh.mouseAreaDoable = function(){
 }
 
 sh.increaseCounter = function(amount){
-	if (!sh.player.extraDumpModeTicksLeft) {
-		if (sh.heat_counter < sh.heat_counter_max && !sh.player.shooting)
+	if (!sh.player.overloaded()) {
+		if (sh.heat_counter < sh.heat_counter_max)
 		{
 			sh.heat_counter += amount;
 			sh.heat_counter = Math.min(sh.heat_counter, sh.heat_counter_max);
 		}
+	}
+}
+
+sh.decreaseCounter = function(amount){
+	if (sh.heat_counter > 0){
+		sh.heat_counter -= amount;
+		sh.heat_counter = Math.max(sh.heat_counter, 0);
 	}
 }
 
@@ -1159,10 +1177,14 @@ sh.draw = function(){
 	// draw player
 	if(sh.player_lives >= 0 && (!sh.player_is_immortal || Math.floor(sh.gametime / 100) % 2 === 0)){
 		sh.drawGameObject(sh.player);
-		var heat_unit = sh.heat_counter / sh.heat_counter_max;
-		var redness = heat_unit*255;
-		var blueness = 255 * (1 - heat_unit);
-		sh.con.strokeStyle = "rgb(" + Math.floor(redness) + ",0," + Math.floor(blueness) + ")";
+		if(sh.player.overloaded()) {
+			sh.con.strokeStyle = "rgb(255, 0, 0)";
+		} else {
+			var heat_unit = sh.heat_counter / sh.heat_counter_max;
+			var redness = heat_unit*255;
+			var blueness = 255 * (1 - heat_unit);
+			sh.con.strokeStyle = "rgb(" + Math.floor(redness) + ",0," + Math.floor(blueness) + ")";
+		}
 		sh.con.lineWidth = 1;
 		sh.con.beginPath();
 		sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, 0, 2*Math.PI, false);
@@ -1170,7 +1192,11 @@ sh.draw = function(){
 		
 		sh.con.lineWidth = 5;
 		sh.con.beginPath();
-		sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, Math.PI * (0.5 - heat_unit), Math.PI * (0.5 + heat_unit), false);
+		if(sh.player.overloaded()) {
+			sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, Math.PI * (0.5 - sh.player.overloadPercentLeft()), Math.PI * (0.5 + sh.player.overloadPercentLeft()), false);
+		} else {
+			sh.con.arc(sh.player.x, sh.scrY(sh.player.y), sh.heat_collection_radius, Math.PI * (0.5 - heat_unit), Math.PI * (0.5 + heat_unit), false);
+		}
 		sh.con.stroke();
 	}
 	
@@ -1239,13 +1265,15 @@ sh.draw = function(){
 		sh.con.fillText("LIVES " + sh.player_lives, 2, 20);
 		var hbwidth = Math.max(1, sh.special_counter / sh.special_counter_max * 50);
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
-		if (sh.heat_counter)
-		{
-			if(sh.player.extraDumpModeTicksLeft)
-				sh.con.fillText("EXTRA " + sh.heat_counter + " DUMPING", 2, 30);
-			else
-				sh.con.fillText("EXTRA " + sh.heat_counter, 2, 30);
+
+		/*
+		if(sh.player.overloaded() && Math.floor(sh.tick / 20) % 2 === 0) {
+			sh.con.textAlign = "center";
+			sh.con.fillStyle = "rgba(255, 0, 0, 0.5)";
+			sh.con.font = "Bold 20pt Impact";
+			sh.con.fillText("OVERLOAD", 120, 300);
 		}
+		*/
 	} else {
 		sh.con.textAlign = "center";
 		sh.con.fillStyle = "rgba(255, 255, 255, 0.8)";
