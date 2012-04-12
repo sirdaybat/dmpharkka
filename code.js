@@ -533,7 +533,7 @@ sh.showTextEvent = function (text, x, y, ticks, color, font) {
 
 sh.createBlinkingText = function (repeat, text, x, y, ticks, color, font) {
 	sh.evt(sh.showTextEvent(text, x, y, ticks, color, font));
-	for(var i=0; i<repeat-1; i++) {
+	for(var i=1; i<repeat; i++) {
 		sh.delay(2*ticks*i, sh.showTextEvent(text, x, y, ticks, color, font));
 	}
 }
@@ -720,7 +720,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 		else if(sh.heat_counter === sh.heat_counter_max) { // at beginning of overload
 			this.overload_ticks_left = this.overload_duration;
 			sh.heat_counter = 0;
-			sh.createBlinkingText(7, "OVERLOAD", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
+			sh.createBlinkingText(4, "OVERHEAT", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
 		}
 		if(this.shooting && !this.overloaded())
 		{
