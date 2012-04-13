@@ -175,24 +175,24 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 	atTick : function() {
 		var tutorialTotalTicks = 1200;
 		var events = [];
-		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250, undefined, undefined, 50, 50)];
+		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250, undefined, undefined, 30, 30)];
 						
-		events[400] = [sh.showTextEvent("Move with WASD,", 120, 120, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("5FPG or arrows.", 120, 145, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("Toggle shooting", 120, 170, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("with spacebar.", 120, 195, 250, undefined, undefined, 50, 50)];
+		events[400] = [sh.showTextEvent("Move with WASD,", 120, 120, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("5FPG or arrows.", 120, 145, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("Toggle shooting", 120, 170, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("with spacebar.", 120, 195, 250, undefined, undefined, 30, 30)];
 						
-		events[700] = [sh.showTextEvent("Special force", 120, 120, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("field can be", 120, 145, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("mouse-dragged", 120, 170, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("when bar is full.", 120, 195, 250, undefined, undefined, 50, 50)];
+		events[700] = [sh.showTextEvent("Special force", 120, 120, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("field can be", 120, 145, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("mouse-dragged", 120, 170, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("when bar is full.", 120, 195, 250, undefined, undefined, 30, 30)];
 		
-		events[1000] = [sh.showTextEvent("Collect heat", 120, 120, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("(circular counter)", 120, 145, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("for more firepower.", 120, 170, 250, undefined, undefined, 50, 50),
-						sh.showTextEvent("Fireball upon overheat.", 120, 195, 250, undefined, undefined, 50, 50)];
+		events[1000] = [sh.showTextEvent("Collect heat", 120, 120, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("(circular counter)", 120, 145, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("for more firepower.", 120, 170, 250, undefined, undefined, 30, 30),
+						sh.showTextEvent("Fireball upon overheat.", 120, 195, 250, undefined, undefined, 30, 30)];
 		
 		if(events[sh.tick % tutorialTotalTicks]) {
 			for(var i in events[sh.tick % tutorialTotalTicks]){
@@ -347,12 +347,12 @@ sh.boringEnemy = sh.pCreate(sh.enemy, {
 		var rnd = sh.random();
 		var scaler = Math.min(1, this.owntime / 3000);
 		
-		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.001 + rnd) * 100;
+		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0007 + rnd) * 100;
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
-			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.001*2 + rnd)*40);
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0007*2 + rnd)*40);
 		
 		if(!sh.gameOver){
-			if(this.owntime - this.last_shot > 1000 || this.shoot_phase > 0 && this.owntime - this.last_shot > 50){
+			if(this.owntime - this.last_shot > 1200 || this.shoot_phase > 0 && this.owntime - this.last_shot > 50){
 				sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player));
 				
 				this.last_shot = this.owntime;
@@ -470,6 +470,35 @@ sh.createSpiralShooterEnemy = function(){
 	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
 	new_enemy.owntime = 0;
 	new_enemy.shootcycle = 0;
+	new_enemy.last_shot = -1;
+	sh.enemies.push(new_enemy);
+}
+
+
+sh.smallEnemy = sh.pCreate(sh.enemy, {
+	atTick : function(){
+		this.x += (sh.player.x - this.x) * 0.005;
+		if(this.startx < 120) this.x += 0.7;
+		else this.x -= 0.7;
+		this.y += 0.15;
+		
+		if(this.owntime - this.last_shot > 2000){
+			if(this.y > sh.player.y) sh.createEnemyBullet(this.x, this.y, 0.1, sh.angle(this, sh.player));
+			this.last_shot = this.owntime;
+		}
+		
+		this.owntime += sh.update_delay;
+	},
+	hitpoints : 50,
+	image : 'greenenemy'
+});
+
+sh.createSmallEnemy = function(x){
+	var new_enemy = Object.create(sh.smallEnemy);
+	new_enemy.startx = x;
+	new_enemy.x = x;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.owntime = 0;
 	new_enemy.last_shot = -1;
 	sh.enemies.push(new_enemy);
 }
@@ -804,7 +833,7 @@ sh.showTextEvent = function (text, x, y, ticks, color, font, fadein, fadeout, al
 		//var fadeOutTicks = fadeout || 0;
 		sh.con.textAlign = align || "center";
 		sh.con.fillStyle = color || "rgba(255, 255, 255, 1)";
-		sh.con.font = font || "12pt Monospace";
+		sh.con.font = font || "10pt Monospace";
 		if(this.lifetime < fadeout) {
 			sh.con.globalAlpha = this.lifetime / fadeout;
 		} else if (ticks - this.lifetime < fadein) {
@@ -1280,7 +1309,7 @@ sh.handleGameOver = function(){
 }
 
 sh.mouseAreaDoable = function(){
-	return !sh.gameOver && sh.special_counter >= sh.special_counter_max && !sh.area_pts;
+	return !sh.gameOver && sh.special_counter === sh.special_counter_max && !sh.area_pts;
 }
 
 sh.increaseCounter = function(amount){
@@ -1315,15 +1344,14 @@ sh.update = function(){
 	while(sh.gametime < sh.realtime()){
 		sh.updateObjects(sh.player_bullets);
 		sh.updateObjects(sh.running_events);
+		sh.updateObjects(sh.enemies);
 		
 		sh.view_bottom += sh.scrollspeed*sh.update_delay;
-		
-		var area_slowdown_decider = function(obj){
-			return sh.tick % 5 === 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
-		}
 	
-		sh.conditionalUpdateObjects(sh.enemies, area_slowdown_decider);
-		sh.conditionalUpdateObjects(sh.enemy_bullets, area_slowdown_decider);
+		sh.conditionalUpdateObjects(sh.enemy_bullets, function(obj){
+				return sh.tick % 5 === 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
+			}
+		);
 
 		// unshelf delayed events
 		for (var idx in sh.delayed_events) {
@@ -1579,7 +1607,14 @@ sh.draw = function(){
 		sh.con.fillText("SCORE:" + sh.pad(sh.current_score, 12) + (sh.high_score ? " HI:" + sh.pad(sh.high_score, 12) : ""), 2, 10);
 		sh.con.fillText("LIVES " + sh.player_lives, 2, 20);
 		var hbwidth = Math.max(1, sh.special_counter / sh.special_counter_max * 50);
+		sh.con.globalAlpha = 0.3;
+		sh.con.drawImage(sh.images['heatbar'], 10, 30);
+		if(sh.special_counter === sh.special_counter_max){
+			sh.con.globalAlpha = Math.sin(sh.tick*0.3) * 0.5 + 0.5;
+		}
+		else sh.con.globalAlpha = 1;
 		sh.con.drawImage(sh.images['heatbar'], 0, 0, hbwidth, 10, 10, 30, hbwidth, 10);
+		sh.con.globalAlpha = 1;
 
 		/*
 		if(sh.player.overloaded() && Math.floor(sh.tick / 20) % 2 === 0) {
