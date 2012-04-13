@@ -211,7 +211,7 @@ sh.leveldata = [
 ["..........", function(){}],
 [".LLL......", function(){}],
 ["..LL......", function(){}],
-["..LLLLL...", function(){sh.evt(sh.showTextEvent("asdfa2", 120, 160, 120));}], // toka osio loppuu, kolmas alkaa
+["..LLLLL...", function(){}], // toka osio loppuu, kolmas alkaa
 [".LLLLLL...", function(){}],
 [".LLLLLL...", function(){}],
 [".LLLLL....", function(){}],
@@ -371,7 +371,7 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
-["..........", function(){sh.evt(sh.showTextEvent("asdfa", 120, 160, 120));}], // eka osio loppuu, toka alkaa
+["..........", function(){}], // eka osio loppuu, toka alkaa
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
