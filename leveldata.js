@@ -171,11 +171,11 @@ sh.leveldata = [
 ["RLLRRRLRRR", function(){}],
 ["RLRRRRRRRR", function(){}],
 ["RRRRRRRRRR", function(){}],
-//["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
+["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
 ["RRRRRRRRRR", function(){}],
-//["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
+["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
 ["RRRRRRRRRR", function(){}],
-//["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
+["RRRRRRRRRR", function(){sh.createBoringEnemy();}],
 ["RRRLRRRRRR", function(){sh.createSpiralShooterEnemy();}],
 ["RRLLLRRRRR", function(){}],
 ["LLLLLLLLLL", function(){}],
@@ -190,8 +190,6 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
-["..........", function(){}],
-["..........", function(){}],
-["..........", function(){sh.evt(sh.showTextEvent("Foobar", 50, 200));}],
-["..........", function(){}]
+["..........", function(){sh.createTutorialEnemy();}],
+["..........", function(){sh.setScrollSpeed(0);}]
 ];

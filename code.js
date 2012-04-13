@@ -44,7 +44,7 @@ sh.pad = function(number, length) {
 }
 
 sh.score = function(points){
-	var totalpoints = Math.floor(points * (1 + sh.heat_counter / 200));
+	var totalpoints = Math.floor(points * (1 + 9 * sh.heat_counter / sh.heat_counter_max));
 	sh.current_score += totalpoints;
 	return totalpoints;
 }
@@ -135,7 +135,9 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 		this.atDeath();
 		
 		var score = sh.score(this.points);
-		sh.evt(sh.popUpTextEvent(score, this.x, this.y));
+		if(score > 0) {
+			sh.evt(sh.popUpTextEvent(score, this.x, this.y, 60, "rgba(255, 255, " + (80 + Math.floor(175*(1-sh.heat_counter/sh.heat_counter_max))) + ", 0.8)", "Italic " + (16+(Math.floor(15*sh.heat_counter/sh.heat_counter_max))) + "pt Impact"));
+		}
 		if(!(this.prev_x === this.x && this.prev_y === this.y)){
 			sh.evt(sh.massiveExplosionEvent(this.x, this.y, this.explosionSize,
 					Math.atan2(this.x - this.prev_x, this.y - this.prev_y)));
@@ -146,6 +148,41 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
 });
+
+// tutorialEnemy
+
+sh.createTutorialEnemy = function(){
+	var new_enemy = Object.create(sh.tutorialEnemy);
+	new_enemy.x = 200;
+	new_enemy.y = 200;
+	sh.enemies.push(new_enemy);
+}
+
+sh.tutorialEnemy = sh.pCreate(sh.enemy, {
+	update : function() {
+		var tutorialTotalTicks = 1200;
+		var events = [];
+		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250),
+						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250),
+						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250)];
+		events[400] = [sh.showTextEvent("second screen", 120, 160)];
+		events[700] = [sh.showTextEvent("third screen", 120, 160)];
+		events[1000] = [sh.showTextEvent("fourth screen", 120, 160)];
+		if(events[sh.tick % tutorialTotalTicks]) {
+			for(var i in events[sh.tick % tutorialTotalTicks]){
+				sh.evt(events[sh.tick % tutorialTotalTicks][i]);
+			}
+		}
+		sh.player_lives = sh.player_lives_initial;
+	},
+	atDeath : function() {
+		//sh.running_events = [];
+		sh.evt(sh.scrollSpeedInterpolateEvent(1, 60));
+	},
+	points : 0,
+	image : 'greenenemy'
+});
+
 
 // fastEnemy
 
@@ -195,15 +232,16 @@ sh.towerEnemy = sh.pCreate(sh.enemy, {
 	update : function () {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
-			if(this.owntime - this.last_shot > 50){
-				sh.createEnemyBullet(this.x, this.y, 0.3, this.angle);
+			if(this.owntime - this.last_shot > 1000){
+				sh.createEnemyBullet(this.x, this.y, 0.1, this.angle);
 				this.last_shot = this.owntime;
 			}
 		}
 		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 1000,
+	hitpoints : 200,
+	points : 100,
 	image : 'towerenemy'
 });
 
@@ -223,11 +261,11 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 	update : function() {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
-			if(this.owntime - this.last_shot > 1000){
+			if(this.owntime - this.last_shot > 2000){
 				
 				for(var i = 0; i < 5; i++){
 					for(var j = 0; j < 5; j++){
-						sh.createEnemyBullet(this.x, this.y, 0.2 + i*0.02, this.angle + (j - 2) * 0.13);
+						sh.createEnemyBullet(this.x, this.y, 0.07 + i*0.01, this.angle + (j - 2) * 0.17);
 					}
 				}
 				this.last_shot = this.owntime;
@@ -239,7 +277,8 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 	},
 	width : 48,
 	height : 48,
-	hitpoints : 3000,
+	hitpoints : 1200,
+	points : 500,
 	image : 'bigtowerenemy'
 });
 
@@ -299,6 +338,7 @@ sh.boringEnemy = sh.pCreate(sh.enemy, {
 		this.owntime += sh.update_delay;
 	},
 	hitpoints : 100,
+	points : 200,
 	image : 'greenenemy'
 });
 
@@ -352,10 +392,11 @@ sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
 			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2)*40);
+			
 		if(!sh.gameOver){	
 			if(this.owntime - this.last_shot > 1500){
 				for(var i = 0; i < 11; i++){
-					sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player) + (i - 5) * 0.2);
+					sh.createEnemyBullet(this.x, this.y, 0.1, sh.angle(this, sh.player) + (i - 5) * 0.3);
 				}
 				this.last_shot = this.owntime;
 			}
@@ -577,7 +618,7 @@ sh.createBoss = function(){
 
 // player bullet
 sh.playerBullet = sh.pCreate(sh.gameObject, {
-	update : function () { this.y += (sh.scrollspeed + 0.3) * sh.update_delay; },
+	update : function () { this.y += (sh.scrollspeed + 0.4) * sh.update_delay; },
 	die : function() {
 		sh.player_bullets[sh.player_bullets.indexOf(this)] = undefined;
 	},
@@ -593,7 +634,6 @@ sh.createPlayerBullet = function(x, y){
 	new_bullet.x = x;
 	new_bullet.y = y;
 	sh.player_bullets.push(new_bullet);
-	sh.current_score++;
 }
 
 // player's supah bullet
@@ -671,18 +711,21 @@ sh.delay = function(delayTicks, evt) {
 	sh.delayed_events.push([sh.pCreate(sh.gameEvent, evt), delayTicks]);
 }
 
-sh.popUpTextEvent = function(text, x, y) {
+sh.popUpTextEvent = function(text, x, y, ticks, fillcolor, font, strokecolor) {
 	return {
-	lifetime : 60,
+	lifetime : ticks || 60,
 	floatOffset : 0,
 	drawTopLayer : function() {
+		var fadeOutTicks = 20;
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = "rgba(255, 255, 100, 0.7)";
+		sh.con.fillStyle = fillcolor || "rgba(255, 255, 255, 1)";
 		sh.con.linewidth = 1;
-		sh.con.strokeStyle = "rgba(0, 0, 0, 0.9)";
-		sh.con.font = "Italic 16pt Impact";
+		sh.con.strokeStyle = strokecolor || "rgba(0, 0, 0, 0.6)";
+		sh.con.font = font || "Italic 16pt Impact";
+		sh.con.globalAlpha = (this.lifetime < fadeOutTicks) ? this.lifetime / fadeOutTicks : 1;
 		sh.con.fillText(text, x, sh.scrY(y)-(this.floatOffset/6));
 		sh.con.strokeText(text, x, sh.scrY(y)-(this.floatOffset/6));
+		sh.con.globalAlpha = 1;
 	},
 	onTick : function() {
 		this.floatOffset++;
@@ -707,10 +750,12 @@ sh.massiveExplosionEvent = function(x, y, size, dir) {
 
 sh.explosionEvent = function(x, y, dir) {
 	return {
-	lifetime : 30,
+	lifetime : 25,
 	direction : dir,
 	drawBottomLayer : function() {
 		var img = sh.images['explosion'];
+		var fadeOutTicks = 10;
+		sh.con.globalAlpha = (this.lifetime < fadeOutTicks) ? this.lifetime / fadeOutTicks : 1;
 		if(this.direction === undefined){
 			sh.con.drawImage(img, Math.round(x - img.width / 2), Math.round(sh.scrY(y) - img.height / 2));
 		}
@@ -719,18 +764,21 @@ sh.explosionEvent = function(x, y, dir) {
 				Math.round(x + (30 - this.lifetime)*Math.sin(this.direction)*0.4 - img.width / 2),
 				Math.round(sh.scrY(y + (30 - this.lifetime)*Math.cos(this.direction)*0.4) - img.height / 2));
 		}
+		sh.con.globalAlpha = 1;
 	}
 	};
 }
 
 // text, x, y mandatory, rest optional
-sh.showTextEvent = function (text, x, y, ticks, color, font) {
+sh.showTextEvent = function (text, x, y, ticks, color, font, fadein, fadeout) {
 	return {
 	lifetime : ticks || 60,
+	fade_in : fadein || 0,
+	fade_out : fadeout || 0,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = color || "rgba(0, 255, 255, 0.8)";
-		sh.con.font = font || "8pt Monospace";
+		sh.con.fillStyle = color || "rgba(255, 255, 255, 1)";
+		sh.con.font = font || "12pt Monospace";
 		sh.con.fillText(text, x, y);
 	}
 	};
@@ -738,7 +786,7 @@ sh.showTextEvent = function (text, x, y, ticks, color, font) {
 
 sh.createBlinkingText = function (repeat, text, x, y, ticks, color, font) {
 	sh.evt(sh.showTextEvent(text, x, y, ticks, color, font));
-	for(var i=0; i<repeat-1; i++) {
+	for(var i=1; i<repeat; i++) {
 		sh.delay(2*ticks*i, sh.showTextEvent(text, x, y, ticks, color, font));
 	}
 }
@@ -888,11 +936,13 @@ sh.player = sh.pCreate(sh.gameObject, {
 	normal_shot_interval : 200,
 	extra_shot_interval : 100,
 	shot_interval : 200,
+	movement_noshoot : 0.17,
+	movement_shoot : 0.1,
 	shooting : false,
 	overload_ticks_left : 0,
 	overload_duration : 120,
-	width : 7,
-	height : 7,
+	width : 5,
+	height : 5,
 	toggleShooting : function(){
 		this.shooting = !this.shooting;
 	},
@@ -901,15 +951,26 @@ sh.player = sh.pCreate(sh.gameObject, {
 		return this.overload_ticks_left / this.overload_duration;
 	},
 	update : function(){
-		// controls: wasd for qwerty, 5fpg for colemak
-		if(sh.downkeys[65]) this.x -= 0.2*sh.update_delay;
-		else if(sh.downkeys[70]) this.x -= 0.2*sh.update_delay;
-		if(sh.downkeys[68]) this.x += 0.2*sh.update_delay;
-		else if(sh.downkeys[71]) this.x += 0.2*sh.update_delay;
-		if(sh.downkeys[87]) this.y += 0.2*sh.update_delay;
-		else if(sh.downkeys[53]) this.y += 0.2*sh.update_delay;
-		if(sh.downkeys[83]) this.y -= 0.2*sh.update_delay;
-		else if(sh.downkeys[80]) this.y -= 0.2*sh.update_delay;
+		// controls: arrow keys; alternate: wasd (qwerty) 5fpg (colemak)
+		
+		var speed = this.shooting ? this.movement_shoot : this.movement_noshoot;
+
+		// left / a / f
+		// right / d / g
+		if(sh.downkeys[37] || sh.downkeys[65] || sh.downkeys[70]) {
+			this.x -= speed * sh.update_delay;
+		} else if(sh.downkeys[39] || sh.downkeys[68] || sh.downkeys[71]) {
+			this.x += speed * sh.update_delay;
+		}
+
+		// up / w / 5
+		// down / s / p
+		if(sh.downkeys[38] || sh.downkeys[87] || sh.downkeys[53]) {
+			this.y += speed * sh.update_delay;
+		} else if(sh.downkeys[40] || sh.downkeys[83] || sh.downkeys[80]) {
+			this.y -= speed * sh.update_delay;
+		}
+
 		this.y += sh.scrollspeed*sh.update_delay;
 	
 		if(this.x < this.width / 2) this.x = this.width / 2;
@@ -927,7 +988,7 @@ sh.player = sh.pCreate(sh.gameObject, {
 
 			this.overload_ticks_left = this.overload_duration;
 			sh.heat_counter = 0;
-			sh.createBlinkingText(7, "OVERLOAD", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
+			sh.createBlinkingText(4, "OVERHEAT", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
 		}
 		if(this.shooting && !this.overloaded())
 		{
@@ -1055,6 +1116,8 @@ sh.game_init = function(){
 	sh.mouseY = 0;
 	sh.scale_factor = 2;
 	
+	sh.player_lives_initial = 3;
+
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
 	sh.heat_counter_max = 1000;
@@ -1087,7 +1150,7 @@ sh.round_init = function(){
 	sh.player.last_shot = -1;
 	sh.player.extraDumpNodeTicksLeft = 0;
 	
-	sh.player_lives = 3;
+	sh.player_lives = sh.player_lives_initial;
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
@@ -1171,6 +1234,7 @@ sh.restOfInit = function(){
 }
 
 sh.handleGameOver = function(){
+	sh.evt(sh.scrollSpeedInterpolateEvent(0, 180));
 	if(sh.high_score < sh.current_score)
 	{
 		sh.high_score = sh.current_score;
