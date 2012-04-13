@@ -1199,7 +1199,7 @@ sh.game_init = function(){
 	
 	sh.player_lives_initial = 3;
 	
-	sh.extra_life_points = [500, 1500, 3000, 5000];
+	sh.extra_life_points = [1000, 8000, 15000, 25000];
 
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
