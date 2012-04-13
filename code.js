@@ -205,6 +205,8 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 		sh.running_events = [];
 		sh.evt(sh.scrollSpeedInterpolateEvent(1, 60));
 	},
+	width : 50,
+	height : 50,
 	points : 0,
 	image : 'shoottostart'
 });

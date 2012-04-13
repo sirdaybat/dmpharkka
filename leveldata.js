@@ -218,7 +218,7 @@ sh.leveldata = [
 [".LLLLL....", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
-["..........", function(){}],/*
+["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
@@ -329,7 +329,7 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
-["..........", function(){sh.createSpreadShooterEnemy();}],
+["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
@@ -547,6 +547,6 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){sh.createTutorialEnemy();}],
-["..........", function(){sh.setScrollSpeed(0);}]*/
+["..........", function(){sh.setScrollSpeed(0);}]
 ];
 // 160 riviä ~= 1 minsa (nopeudella 5sek/pystyruudullinen)
