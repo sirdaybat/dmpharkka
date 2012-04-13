@@ -130,6 +130,13 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 	explosionSize : 5,
 	prev_x : 0,
 	prev_y : 0,
+	update : function(){
+		if(!(this.x == this.prev_x && this.y == this.prev_y)){
+			this.prev_x = this.x;
+			this.prev_y = this.y;
+		}
+		this.atTick();
+	},
 	atDeath : function() {},
 	die : function() {
 		this.atDeath();
@@ -159,7 +166,7 @@ sh.createTutorialEnemy = function(){
 }
 
 sh.tutorialEnemy = sh.pCreate(sh.enemy, {
-	update : function() {
+	atTick : function() {
 		var tutorialTotalTicks = 1200;
 		var events = [];
 		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250),
@@ -187,7 +194,7 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 // fastEnemy
 
 sh.fastEnemy = sh.pCreate(sh.enemy, {
-	update : function () {
+	atTick : function () {
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime * 0.002) * 100,
 		this.owntime += sh.update_delay;
 	},
@@ -205,7 +212,7 @@ sh.createFastEnemy = function(){
 // slowEnemy
 
 sh.slowEnemy = sh.pCreate(sh.enemy, {
-	update : function () {
+	atTick : function () {
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime * 0.001) * 100;
 		if(this.owntime - this.last_shot > 800){
 			sh.createEnemyBullet(this.x, this.y, 0.2);
@@ -229,7 +236,7 @@ sh.createSlowEnemy = function(){
 // towerEnemy
 
 sh.towerEnemy = sh.pCreate(sh.enemy, {
-	update : function () {
+	atTick : function () {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
 			if(this.owntime - this.last_shot > 1000){
@@ -258,7 +265,7 @@ sh.createTowerEnemy = function(x){
 
 //bigTowerEnemy
 sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
-	update : function() {
+	atTick : function() {
 		if(!sh.gameOver){
 			this.angle = sh.angle(this, sh.player);
 			if(this.owntime - this.last_shot > 2000){
@@ -293,7 +300,7 @@ sh.createBigTowerEnemy = function(x){
 
 //horizontalTurret
 sh.horizontalTurret = sh.pCreate(sh.enemy, {
-	update : function() {
+	atTick : function() {
 		if(this.owntime - this.last_shot > 60){
 			sh.createEnemyBullet(this.x, this.y, 0.2, this.rightside ? 1.5*Math.PI : 0.5*Math.PI);
 			this.last_shot = this.owntime;
@@ -316,7 +323,7 @@ sh.createHorizontalTurret = function(rightside){
 
 
 sh.boringEnemy = sh.pCreate(sh.enemy, {
-	update : function() {
+	atTick : function() {
 		sh.seedRand(this.randseed);
 		var rnd = sh.random();
 		var scaler = Math.min(1, this.owntime / 3000);
@@ -355,7 +362,7 @@ sh.createBoringEnemy = function(){
 
 
 sh.crossShooterEnemy = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		sh.seedRand(this.randseed);
 		var rnd = sh.random();
 		var scaler = Math.min(1, this.owntime / 1000);
@@ -386,7 +393,7 @@ sh.createCrossShooterEnemy = function(){
 
 
 sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		var scaler = Math.min(1, this.owntime / 1000);
 		
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
@@ -418,7 +425,7 @@ sh.createSpreadShooterEnemy = function(){
 }
 
 sh.spiralShooterEnemy = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		var scaler = Math.min(1, this.owntime / 3000);
 		
 		this.x = sh.canvas.width*0.5 + Math.cos(-this.owntime*0.0008) * 50;
@@ -450,7 +457,7 @@ sh.createSpiralShooterEnemy = function(){
 
 //boss and the gang
 sh.bossCore = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		var scaler = Math.min(1, this.owntime / 3000);
 		
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
@@ -524,7 +531,7 @@ sh.bossCore = sh.pCreate(sh.enemy, {
 });
 
 sh.bossIndestructiblePart = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		this.x = this.parent.x + (this.rightside ? 28 : -28);
 		this.y = this.parent.y - 24;
 		
@@ -576,7 +583,7 @@ sh.createBossIndestructiblePart = function(parent, rightside){
 }
 
 sh.bossFrontShield = sh.pCreate(sh.enemy, {
-	update : function(){
+	atTick : function(){
 		this.x = this.parent.x;
 		this.y = this.parent.y - 24;
 		
@@ -1284,14 +1291,7 @@ sh.update = function(){
 		var area_slowdown_decider = function(obj){
 			return sh.tick % 5 === 0 || !(sh.area_pts != undefined && sh.isGameObjectInsideArea(obj, sh.area_pts[0], sh.area_pts[1]));
 		}
-		
-		for(idxenemy in sh.enemies){
-			var e = sh.enemies[idxenemy];
-			if(!(e.x == e.prev_x && e.y == e.prev_y)){
-				e.prev_x = e.x;
-				e.prev_y = e.y;
-			}
-		}
+	
 		sh.conditionalUpdateObjects(sh.enemies, area_slowdown_decider);
 		sh.conditionalUpdateObjects(sh.enemy_bullets, area_slowdown_decider);
 
