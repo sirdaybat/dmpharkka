@@ -43,7 +43,7 @@ sh.pad = function(number, length) {
 }
 
 sh.score = function(points){
-	var totalpoints = Math.floor(points * (1 + sh.heat_counter / 200));
+	var totalpoints = Math.floor(points * (1 + 9 * sh.heat_counter / sh.heat_counter_max));
 	sh.current_score += totalpoints;
 	return totalpoints;
 }
@@ -125,7 +125,9 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 		this.atDeath();
 		
 		var score = sh.score(this.points);
-		sh.evt(sh.popUpTextEvent(score, this.x, this.y, 60, "rgba(255, 255, " + (80 + Math.floor(175*(1-sh.heat_counter/sh.heat_counter_max))) + ", 0.8)", "Italic " + (16+(Math.floor(15*sh.heat_counter/sh.heat_counter_max))) + "pt Impact"));
+		if(score > 0) {
+			sh.evt(sh.popUpTextEvent(score, this.x, this.y, 60, "rgba(255, 255, " + (80 + Math.floor(175*(1-sh.heat_counter/sh.heat_counter_max))) + ", 0.8)", "Italic " + (16+(Math.floor(15*sh.heat_counter/sh.heat_counter_max))) + "pt Impact"));
+		}
 		if(!(this.prev_x === this.x && this.prev_y === this.y)){
 			sh.evt(sh.massiveExplosionEvent(this.x, this.y, this.explosionSize,
 					Math.atan2(this.x - this.prev_x, this.y - this.prev_y)));
@@ -136,6 +138,41 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 		sh.enemies[sh.enemies.indexOf(this)] = undefined;
 	}
 });
+
+// tutorialEnemy
+
+sh.createTutorialEnemy = function(){
+	var new_enemy = Object.create(sh.tutorialEnemy);
+	new_enemy.x = 200;
+	new_enemy.y = 200;
+	sh.enemies.push(new_enemy);
+}
+
+sh.tutorialEnemy = sh.pCreate(sh.enemy, {
+	update : function() {
+		var tutorialTotalTicks = 1200;
+		var events = [];
+		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250),
+						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250),
+						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250)];
+		events[400] = [sh.showTextEvent("second screen", 120, 160)];
+		events[700] = [sh.showTextEvent("third screen", 120, 160)];
+		events[1000] = [sh.showTextEvent("fourth screen", 120, 160)];
+		if(events[sh.tick % tutorialTotalTicks]) {
+			for(var i in events[sh.tick % tutorialTotalTicks]){
+				sh.evt(events[sh.tick % tutorialTotalTicks][i]);
+			}
+		}
+		sh.player_lives = sh.player_lives_initial;
+	},
+	atDeath : function() {
+		//sh.running_events = [];
+		sh.evt(sh.scrollSpeedInterpolateEvent(1, 60));
+	},
+	points : 0,
+	image : 'greenenemy'
+});
+
 
 // fastEnemy
 
@@ -193,7 +230,8 @@ sh.towerEnemy = sh.pCreate(sh.enemy, {
 		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 300,
+	hitpoints : 200,
+	points : 100,
 	image : 'towerenemy'
 });
 
@@ -229,7 +267,8 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 	},
 	width : 48,
 	height : 48,
-	hitpoints : 3000,
+	hitpoints : 1200,
+	points : 500,
 	image : 'bigtowerenemy'
 });
 
@@ -289,6 +328,7 @@ sh.boringEnemy = sh.pCreate(sh.enemy, {
 		this.owntime += sh.update_delay;
 	},
 	hitpoints : 100,
+	points : 200,
 	image : 'greenenemy'
 });
 
@@ -668,13 +708,15 @@ sh.explosionEvent = function(x, y, dir) {
 }
 
 // text, x, y mandatory, rest optional
-sh.showTextEvent = function (text, x, y, ticks, color, font) {
+sh.showTextEvent = function (text, x, y, ticks, color, font, fadein, fadeout) {
 	return {
 	lifetime : ticks || 60,
+	fade_in : fadein || 0,
+	fade_out : fadeout || 0,
 	drawTopLayer : function() {
 		sh.con.textAlign = "center";
-		sh.con.fillStyle = color || "rgba(0, 255, 255, 0.8)";
-		sh.con.font = font || "8pt Monospace";
+		sh.con.fillStyle = color || "rgba(255, 255, 255, 1)";
+		sh.con.font = font || "12pt Monospace";
 		sh.con.fillText(text, x, y);
 	}
 	};
@@ -1010,6 +1052,8 @@ sh.game_init = function(){
 	sh.mouseY = 0;
 	sh.scale_factor = 2;
 	
+	sh.player_lives_initial = 3;
+
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
 	sh.heat_counter_max = 1000;
@@ -1042,7 +1086,7 @@ sh.round_init = function(){
 	sh.player.last_shot = -1;
 	sh.player.extraDumpNodeTicksLeft = 0;
 	
-	sh.player_lives = 2;
+	sh.player_lives = sh.player_lives_initial;
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
@@ -1126,6 +1170,7 @@ sh.restOfInit = function(){
 }
 
 sh.handleGameOver = function(){
+	sh.evt(sh.scrollSpeedInterpolateEvent(0, 180));
 	if(sh.high_score < sh.current_score)
 	{
 		sh.high_score = sh.current_score;

@@ -190,10 +190,13 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
+/*
 ["..........", function(){sh.createBlinkingText(4, "Blinkage", 130, 75, 20, "rgb(255, 255, 255)","Italic 16pt Impact");}],
 ["..........", function(){sh.evt(sh.showTextEvent("With font", 140, 125, 120, "rgb(255, 255, 255)","20pt Impact"));}],
 ["..........", function(){sh.evt(sh.showTextEvent("With color", 50, 100, 120, "rgb(255, 0, 255)"));}],
 ["..........", function(){sh.evt(sh.showTextEvent("With 2x lifetime", 50, 150, 120));}],
 ["..........", function(){sh.evt(sh.showTextEvent("Plain text event", 50, 200));}],
-["..........", function(){}]
+*/
+["..........", function(){sh.createTutorialEnemy();}],
+["..........", function(){sh.setScrollSpeed(0);}]
 ];
