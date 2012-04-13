@@ -796,16 +796,22 @@ sh.explosionEvent = function(x, y, dir) {
 }
 
 // text, x, y mandatory, rest optional
-sh.showTextEvent = function (text, x, y, ticks, color, font, fadein, fadeout) {
+sh.showTextEvent = function (text, x, y, ticks, color, font, fadein, fadeout, align) {
 	return {
 	lifetime : ticks || 60,
-	fade_in : fadein || 0,
-	fade_out : fadeout || 0,
 	drawTopLayer : function() {
-		sh.con.textAlign = "center";
+		//var fadeInTicks = fadein || 0;
+		//var fadeOutTicks = fadeout || 0;
+		sh.con.textAlign = align || "center";
 		sh.con.fillStyle = color || "rgba(255, 255, 255, 1)";
 		sh.con.font = font || "12pt Monospace";
+		if(this.lifetime < fadeout) {
+			sh.con.globalAlpha = this.lifetime / fadeout;
+		} else if (ticks - this.lifetime < fadein) {
+			sh.con.globalAlpha = (ticks - this.lifetime) / fadein;
+		}
 		sh.con.fillText(text, x, y);
+		sh.con.globalAlpha = 1;
 	}
 	};
 }

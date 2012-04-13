@@ -189,7 +189,7 @@ sh.leveldata = [
 ["..........", function(){}],
 ["..........", function(){}],
 ["..........", function(){}],
-["..........", function(){}],
+["..........", function(){sh.evt(sh.showTextEvent("Foobar", 120, 300, 120, "white","20pt Monospace", 50, 50, "Left"));}],
 ["..........", function(){sh.createTutorialEnemy();}],
 ["..........", function(){sh.setScrollSpeed(0);}]
 ];
