@@ -49,6 +49,7 @@ sh.score = function(points){
 	if(sh.next_extra_life_idx < sh.extra_life_points.length && sh.current_score >= sh.extra_life_points[sh.next_extra_life_idx]){
 		//sh.createBlinkingText(4, "EXTRA LIFE", 120, 130, 17, "white", "Bold 20pt Impact");
 		sh.evt(sh.showTextEvent("EXTRA LIFE", 120, 130, 60, "rgba(255,255,255,0.7)", "Bold 20pt Impact"), 15, 15);
+		sh.player_lives++;
 		sh.next_extra_life_idx++;
 	}
 	return totalpoints;
@@ -1176,6 +1177,8 @@ sh.round_init = function(){
 	
 	sh.gameOver = false;
 	sh.victory = false;
+	
+	sh.player.shooting = false;
 
 	sh.enemies = [];
 	sh.enemy_bullets = [];
