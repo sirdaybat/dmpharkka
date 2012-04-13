@@ -317,30 +317,6 @@ sh.createBigTowerEnemy = function(x){
 	sh.enemies.push(new_enemy);
 }
 
-//horizontalTurret
-sh.horizontalTurret = sh.pCreate(sh.enemy, {
-	atTick : function() {
-		if(this.owntime - this.last_shot > 60){
-			sh.createEnemyBullet(this.x, this.y, 0.2, this.rightside ? 1.5*Math.PI : 0.5*Math.PI);
-			this.last_shot = this.owntime;
-		}
-		this.owntime += sh.update_delay;
-	},
-	hitpoints : 1,
-	image : 'towerenemy'
-});
-
-sh.createHorizontalTurret = function(rightside){
-	var new_enemy = Object.create(sh.horizontalTurret);
-	new_enemy.x = rightside ? sh.canvas.width + 48 : -48;
-	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
-	new_enemy.owntime = 0;
-	new_enemy.last_shot = -1;
-	new_enemy.rightside = rightside;
-	sh.enemies.push(new_enemy);
-}
-
-
 sh.boringEnemy = sh.pCreate(sh.enemy, {
 	atTick : function() {
 		sh.seedRand(this.randseed);
@@ -413,11 +389,13 @@ sh.createCrossShooterEnemy = function(){
 
 sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 	atTick : function(){
+		sh.seedRand(this.randseed);
+		var rnd = sh.random();
 		var scaler = Math.min(1, this.owntime / 1000);
 		
-		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
+		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003 + rnd) * 60;
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
-			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2)*40);
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2 + rnd)*40);
 			
 		if(!sh.gameOver){	
 			if(this.owntime - this.last_shot > 1500){
@@ -436,20 +414,24 @@ sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 
 sh.createSpreadShooterEnemy = function(){
 	var new_enemy = Object.create(sh.spreadShooterEnemy);
+	sh.seedRand(sh.gametime);
 	new_enemy.x = 120;
 	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
 	new_enemy.owntime = 0;
 	new_enemy.last_shot = -1;
+	new_enemy.randseed = sh.gametime;
 	sh.enemies.push(new_enemy);
 }
 
 sh.spiralShooterEnemy = sh.pCreate(sh.enemy, {
 	atTick : function(){
+		sh.seedRand(this.randseed);
+		var rnd = sh.random();
 		var scaler = Math.min(1, this.owntime / 3000);
 		
-		this.x = sh.canvas.width*0.5 + Math.cos(-this.owntime*0.0008) * 50;
+		this.x = sh.canvas.width*0.5 + Math.cos(-this.owntime*0.0008 + rnd) * 50;
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
-			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(-this.owntime*0.0008)*40);
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(-this.owntime*0.0008 + rnd)*40);
 			
 		if(this.shootcycle < 100){
 			sh.createEnemyBullet(this.x, this.y, 0.1, this.shootcycle*0.3);
@@ -471,20 +453,22 @@ sh.createSpiralShooterEnemy = function(){
 	new_enemy.owntime = 0;
 	new_enemy.shootcycle = 0;
 	new_enemy.last_shot = -1;
+	new_enemy.randseed = sh.gametime;
 	sh.enemies.push(new_enemy);
 }
 
 
 sh.smallEnemy = sh.pCreate(sh.enemy, {
 	atTick : function(){
-		this.x += (sh.player.x - this.x) * 0.005;
-		if(this.startx < 120) this.x += 0.7;
-		else this.x -= 0.7;
-		this.y += 0.15;
+		this.x += ((this.startx < 120) ? 1 : -1) * this.owntime * 0.001 * sh.scrollspeed;
+		this.x += this.x < sh.player.x ? 0.3 : -0.3;
+		this.y += 0.15 - this.owntime * 0.0001;
 		
-		if(this.owntime - this.last_shot > 2000){
-			if(this.y > sh.player.y) sh.createEnemyBullet(this.x, this.y, 0.1, sh.angle(this, sh.player));
-			this.last_shot = this.owntime;
+		if(!sh.gameOver){
+			if(this.owntime - this.last_shot > 2000){
+				if(this.y > sh.player.y) sh.createEnemyBullet(this.x, this.y, 0.1, sh.angle(this, sh.player));
+				this.last_shot = this.owntime;
+			}
 		}
 		
 		this.owntime += sh.update_delay;
@@ -502,6 +486,38 @@ sh.createSmallEnemy = function(x){
 	new_enemy.last_shot = -1;
 	sh.enemies.push(new_enemy);
 }
+
+
+sh.directedTurret = sh.pCreate(sh.enemy, {
+	atTick : function(){
+		if(this.owntime - this.last_shot > this.frequency){
+			sh.createEnemyBullet(this.x, this.y, 0.1, this.angle);
+			this.last_shot = this.owntime;
+		}
+		this.owntime += sh.update_delay;
+		this.drawAngle = this.angle;
+	},
+	hitpoints : 50,
+	image : 'towerenemy'
+});
+
+sh.createDirectedTurret = function(x, angle, frequency, indestructible, hitpoints){
+	var new_enemy = Object.create(sh.directedTurret);
+	new_enemy.x = x;
+	new_enemy.y = sh.view_bottom + sh.canvas.height*2;
+	new_enemy.angle = angle;
+	new_enemy.frequency = frequency;
+	new_enemy.indestructible = indestructible;
+	if(hitpoints) new_enemy.hitpoints = hitpoints;
+	new_enemy.owntime = 0;
+	new_enemy.last_shot = -1;
+	sh.enemies.push(new_enemy);
+}
+
+sh.createHorizontalTurret = function(rightside, frequency){
+	sh.createDirectedTurret((rightside ? sh.canvas.width + 48 : -48), (rightside ? 1.5*Math.PI : 0.5*Math.PI), (frequency || 60), true);
+}
+
 
 //boss and the gang
 sh.bossCore = sh.pCreate(sh.enemy, {
@@ -974,8 +990,8 @@ sh.conditionalUpdateObjects = function(objlist, condition){
 sh.removeOutOfScreenObjects = function(objlist){
 	for(var idx = 0; idx < objlist.length; idx++){
 		var obj = objlist[idx];
-		if(obj.x + obj.width < -2*24 || obj.x > sh.canvas.width + 2*24 ||
-			obj.y < sh.view_bottom - 2*24 || obj.y - obj.height > sh.view_bottom + sh.canvas.height + 2*24){
+		if(obj.x < -2*24 || obj.x > sh.canvas.width + 2*24 ||
+			obj.y < sh.view_bottom - 2*24 || obj.y > sh.view_bottom + sh.canvas.height * 2){
 			
 			objlist.splice(idx, 1);
 			idx--;
@@ -1187,7 +1203,7 @@ sh.game_init = function(){
 	sh.heat_counter_max = 1000;
 	sh.area_max_length = 100;
 
-	sh.special_increment_tick = 2;
+	sh.special_increment_tick = 4;
 	sh.heat_increment_tick = 1;
 	sh.shooting_decrement_tick = 4;
 	
@@ -1611,7 +1627,7 @@ sh.draw = function(){
 		var hbwidth = Math.max(1, sh.special_counter / sh.special_counter_max * 50);
 		sh.con.globalAlpha = 0.3;
 		sh.con.drawImage(sh.images['heatbar'], 10, 30);
-		if(sh.special_counter === sh.special_counter_max){
+		if(sh.mouseAreaDoable()){
 			sh.con.globalAlpha = Math.sin(sh.tick*0.3) * 0.5 + 0.5;
 		}
 		else sh.con.globalAlpha = 1;
