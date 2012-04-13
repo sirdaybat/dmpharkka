@@ -7,7 +7,8 @@ sh.gameObjectTypes = Object.freeze({
 	playerShip : 100,
 	enemy : 200,
 	playerBullet : 300,
-	enemyBullet : 400
+	enemyBullet : 400,
+	playerBigBullet : 500
 });
 
 sh.none = function () {};
@@ -39,7 +40,7 @@ sh.pad = function(number, length) {
 	while (str.length < length) {
 		str = '0' + str;
 	}
-	return str;about:startpage
+	return str;
 }
 
 sh.score = function(points){
@@ -79,11 +80,20 @@ sh.collisions = {
 };
 
 sh.collisions.register("enemy", "playerBullet", function (enemy, playerBullet) {
-	enemy.hitpoints -= playerBullet.damage;
-	if(!enemy.indestructible) enemy.hit_starttime = sh.gametime;
-	if (!enemy.indestructible && enemy.hitpoints <= 0)
-		enemy.die();
+	if(!enemy.indestructible){
+		enemy.hitpoints -= playerBullet.damage;
+		enemy.hit_starttime = sh.gametime;
+		if(enemy.hitpoints <= 0) enemy.die();
+	}
 	playerBullet.die();
+});
+
+sh.collisions.register("enemy", "playerBigBullet", function (enemy, playerBigBullet) {
+	if(!enemy.indestructible){
+		enemy.hitpoints -= playerBigBullet.damage;
+		enemy.hit_starttime = sh.gametime;
+		if(enemy.hitpoints <= 0) enemy.die();
+	}
 });
 
 sh.handlePlayerDamage = function(){
@@ -342,12 +352,13 @@ sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 		this.x = sh.canvas.width*0.5 + Math.cos(this.owntime*0.0003) * 60;
 		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
 			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(this.owntime*0.0003*2)*40);
-			
-		if(this.owntime - this.last_shot > 1500){
-			for(var i = 0; i < 11; i++){
-				sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player) + (i - 5) * 0.2);
+		if(!sh.gameOver){	
+			if(this.owntime - this.last_shot > 1500){
+				for(var i = 0; i < 11; i++){
+					sh.createEnemyBullet(this.x, this.y, 0.2, sh.angle(this, sh.player) + (i - 5) * 0.2);
+				}
+				this.last_shot = this.owntime;
 			}
-			this.last_shot = this.owntime;
 		}
 		
 		this.owntime += sh.update_delay;
@@ -361,6 +372,37 @@ sh.createSpreadShooterEnemy = function(){
 	new_enemy.x = 120;
 	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
 	new_enemy.owntime = 0;
+	new_enemy.last_shot = -1;
+	sh.enemies.push(new_enemy);
+}
+
+sh.spiralShooterEnemy = sh.pCreate(sh.enemy, {
+	update : function(){
+		var scaler = Math.min(1, this.owntime / 3000);
+		
+		this.x = sh.canvas.width*0.5 + Math.cos(-this.owntime*0.0008) * 50;
+		this.y = (1-scaler)*(sh.view_bottom + sh.canvas.height + 48) +
+			scaler*(sh.view_bottom + sh.canvas.height*0.7 + Math.sin(-this.owntime*0.0008)*40);
+			
+		if(this.shootcycle < 100){
+			sh.createEnemyBullet(this.x, this.y, 0.1, this.shootcycle*0.3);
+		}
+		
+		this.shootcycle++;
+		if(this.shootcycle > 200) this.shootcycle = 0;		
+			
+		this.owntime += sh.update_delay;
+	},
+	hitpoints : 500,
+	image : 'greenenemy'
+});
+
+sh.createSpiralShooterEnemy = function(){
+	var new_enemy = Object.create(sh.spiralShooterEnemy);
+	new_enemy.x = 120;
+	new_enemy.y = sh.view_bottom + sh.canvas.height + 48;
+	new_enemy.owntime = 0;
+	new_enemy.shootcycle = 0;
 	new_enemy.last_shot = -1;
 	sh.enemies.push(new_enemy);
 }
@@ -552,6 +594,25 @@ sh.createPlayerBullet = function(x, y){
 	new_bullet.y = y;
 	sh.player_bullets.push(new_bullet);
 	sh.current_score++;
+}
+
+// player's supah bullet
+sh.playerBigBullet = sh.pCreate(sh.gameObject, {
+	update : function () { this.y += (sh.scrollspeed + 0.5) * sh.update_delay; },
+	die : function() {
+		sh.player_bullets[sh.player_bullets.indexOf(this)] = undefined;
+	},
+	type : 'playerBigBullet',
+	damage : 50,
+	width : 50,
+	height : 50
+});
+
+sh.createPlayerBigBullet = function(x, y){
+	var new_bullet = Object.create(sh.playerBigBullet);
+	new_bullet.x = x;
+	new_bullet.y = y;
+	sh.player_bullets.push(new_bullet);
 }
 
 // enemy bullet
@@ -862,6 +923,8 @@ sh.player = sh.pCreate(sh.gameObject, {
 			}
 		}
 		else if(sh.heat_counter === sh.heat_counter_max) { // at beginning of overload
+			sh.createPlayerBigBullet(this.x, this.y);
+
 			this.overload_ticks_left = this.overload_duration;
 			sh.heat_counter = 0;
 			sh.createBlinkingText(7, "OVERLOAD", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
@@ -914,7 +977,7 @@ sh.changeScaling = function(factor){
 	if(sh.scale_factor < 1) sh.scale_factor = 1;
 	sh.canvas.setAttribute("style", "position:relative; width:" +
 		sh.scale_factor*240 + "px; height:" +
-		sh.scale_factor*320 + "px; image-rendering:-moz-crisp-edges; cursor:none");
+		sh.scale_factor*320 + "px; cursor:none; image-rendering:-moz-crisp-edges");
 }
 
 sh.keyDown = function(evt){
@@ -1024,7 +1087,7 @@ sh.round_init = function(){
 	sh.player.last_shot = -1;
 	sh.player.extraDumpNodeTicksLeft = 0;
 	
-	sh.player_lives = 2;
+	sh.player_lives = 3;
 	sh.current_score = 0;
 	sh.player_is_immortal = false;
 	sh.player_immortal_starttime = -1;
@@ -1269,16 +1332,22 @@ sh.update = function(){
 
 sh.drawGameObject = function(obj){
 	var img;
-	if(!obj.hit_starttime) img = sh.images[obj.image];
-	else img = sh.hitImages[obj.image];
-		
-	if(!obj.drawAngle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
+	if(!obj.image){
+		sh.con.fillStyle = "red";
+		sh.con.fillRect(Math.round(obj.x - obj.width / 2), Math.round(sh.scrY(obj.y) - obj.height / 2), obj.width, obj.height);
+	}
 	else{
-		sh.con.translate(obj.x, sh.scrY(obj.y));
-		sh.con.rotate(obj.drawAngle);
-		sh.con.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
-		sh.con.rotate(-obj.drawAngle);
-		sh.con.translate(-obj.x, -sh.scrY(obj.y));
+		if(!obj.hit_starttime) img = sh.images[obj.image];
+		else img = sh.hitImages[obj.image];
+			
+		if(!obj.drawAngle) sh.con.drawImage(img, Math.round(obj.x - img.width / 2), Math.round(sh.scrY(obj.y) - img.height / 2));
+		else{
+			sh.con.translate(obj.x, sh.scrY(obj.y));
+			sh.con.rotate(obj.drawAngle);
+			sh.con.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+			sh.con.rotate(-obj.drawAngle);
+			sh.con.translate(-obj.x, -sh.scrY(obj.y));
+		}
 	}
 }
 
