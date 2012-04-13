@@ -700,7 +700,8 @@ sh.playerBigBullet = sh.pCreate(sh.gameObject, {
 	type : 'playerBigBullet',
 	damage : 50,
 	width : 50,
-	height : 50
+	height : 50,
+	image : 'overheatprojectile'
 });
 
 sh.createPlayerBigBullet = function(x, y){
@@ -1155,6 +1156,7 @@ sh.imagepaths = Object.freeze({
 	bigtowerenemy: "resources/towerenemy-48x48.png",
 	heatbar: "resources/heatbar-50x10.png",
 	explosion: "resources/explosion-30x30.png",
+	overheatprojectile: "resources/overheat-projectile-50x50.png",
 });
 
 sh.game_init = function(){
