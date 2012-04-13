@@ -166,8 +166,8 @@ sh.enemy = sh.pCreate(sh.gameObject, {
 
 sh.createTutorialEnemy = function(){
 	var new_enemy = Object.create(sh.tutorialEnemy);
-	new_enemy.x = 200;
-	new_enemy.y = 200;
+	new_enemy.x = 210;
+	new_enemy.y = 220;
 	sh.enemies.push(new_enemy);
 }
 
@@ -206,7 +206,7 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 		sh.evt(sh.scrollSpeedInterpolateEvent(1, 60));
 	},
 	points : 0,
-	image : 'greenenemy'
+	image : 'shoottostart'
 });
 
 
@@ -1049,14 +1049,14 @@ sh.player = sh.pCreate(sh.gameObject, {
 
 			this.overload_ticks_left = this.overload_duration;
 			sh.heat_counter = 0;
-			sh.createBlinkingText(4, "OVERHEAT", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 20pt Impact");
+			sh.createBlinkingText(4, "OVERHEAT", 120, 300, 17, "rgba(255,0,0,0.5)", "Bold 18pt Impact");
 		}
 		if(this.shooting && !this.overloaded())
 		{
 			sh.decreaseCounter(sh.shooting_decrement_tick);
 
 			var ratio = (sh.heat_counter_max - sh.heat_counter) / sh.heat_counter_max;
-			this.shot_interval = Math.floor((1-ratio) * this.normal_shot_interval + ratio * this.extra_shot_interval);
+			this.shot_interval = Math.floor(ratio * this.normal_shot_interval + (1-ratio) * this.extra_shot_interval);
 			if(sh.gametime - this.last_shot >= this.shot_interval) {
 				sh.createPlayerBullet(this.x, this.y);
 				this.last_shot = sh.gametime;
@@ -1157,6 +1157,7 @@ sh.imagepaths = Object.freeze({
 	heatbar: "resources/heatbar-50x10.png",
 	explosion: "resources/explosion-30x30.png",
 	overheatprojectile: "resources/overheat-projectile-50x50.png",
+	shoottostart: "resources/shoottostart-50x50.png",
 });
 
 sh.game_init = function(){
