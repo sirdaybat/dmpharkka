@@ -46,6 +46,11 @@ sh.pad = function(number, length) {
 sh.score = function(points){
 	var totalpoints = Math.floor(points * (1 + 9 * sh.heat_counter / sh.heat_counter_max));
 	sh.current_score += totalpoints;
+	if(sh.next_extra_life_idx < sh.extra_life_points.length && sh.current_score >= sh.extra_life_points[sh.next_extra_life_idx]){
+		//sh.createBlinkingText(4, "EXTRA LIFE", 120, 130, 17, "white", "Bold 20pt Impact");
+		sh.evt(sh.showTextEvent("EXTRA LIFE", 120, 130, 60, "rgba(255,255,255,0.7)", "Bold 20pt Impact"), 15, 15);
+		sh.next_extra_life_idx++;
+	}
 	return totalpoints;
 }
 
@@ -1124,6 +1129,8 @@ sh.game_init = function(){
 	sh.scale_factor = 2;
 	
 	sh.player_lives_initial = 3;
+	
+	sh.extra_life_points = [500, 1500, 3000, 5000];
 
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
@@ -1164,6 +1171,8 @@ sh.round_init = function(){
 	sh.immortality_duration = 1000;
 	sh.special_counter = 0;
 	sh.heat_counter = 0;
+	
+	sh.next_extra_life_idx = 0;
 	
 	sh.gameOver = false;
 	sh.victory = false;
