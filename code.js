@@ -175,12 +175,25 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 	atTick : function() {
 		var tutorialTotalTicks = 1200;
 		var events = [];
-		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250),
-						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250),
-						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250)];
-		events[400] = [sh.showTextEvent("second screen", 120, 160)];
-		events[700] = [sh.showTextEvent("third screen", 120, 160)];
-		events[1000] = [sh.showTextEvent("fourth screen", 120, 160)];
+		events[100] = [sh.showTextEvent("HEAT", 120, 120, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("Nuutti H\u00f6ltt\u00e4", 120, 170, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("Yrj\u00f6 Peussa", 120, 200, 250, undefined, undefined, 50, 50)];
+						
+		events[400] = [sh.showTextEvent("Move with WASD,", 120, 120, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("5FPG or arrows.", 120, 145, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("Toggle shooting", 120, 170, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("with spacebar.", 120, 195, 250, undefined, undefined, 50, 50)];
+						
+		events[700] = [sh.showTextEvent("Special force", 120, 120, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("field can be", 120, 145, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("mouse-dragged", 120, 170, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("when bar is full.", 120, 195, 250, undefined, undefined, 50, 50)];
+		
+		events[1000] = [sh.showTextEvent("Collect heat", 120, 120, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("(circular counter)", 120, 145, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("for more firepower.", 120, 170, 250, undefined, undefined, 50, 50),
+						sh.showTextEvent("Fireball upon overheat.", 120, 195, 250, undefined, undefined, 50, 50)];
+		
 		if(events[sh.tick % tutorialTotalTicks]) {
 			for(var i in events[sh.tick % tutorialTotalTicks]){
 				sh.evt(events[sh.tick % tutorialTotalTicks][i]);
@@ -189,7 +202,7 @@ sh.tutorialEnemy = sh.pCreate(sh.enemy, {
 		sh.player_lives = sh.player_lives_initial;
 	},
 	atDeath : function() {
-		//sh.running_events = [];
+		sh.running_events = [];
 		sh.evt(sh.scrollSpeedInterpolateEvent(1, 60));
 	},
 	points : 0,
@@ -803,7 +816,6 @@ sh.createBlinkingText = function (repeat, text, x, y, ticks, color, font) {
 		sh.delay(2*ticks*i, sh.showTextEvent(text, x, y, ticks, color, font));
 	}
 }
-
 
 sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 	return {
