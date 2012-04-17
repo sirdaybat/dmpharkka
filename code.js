@@ -593,8 +593,8 @@ sh.bossCore = sh.pCreate(sh.enemy, {
 	},
 	width : 48,
 	height : 48,
-	hitpoints : 1000,
-	points : 5000,
+	hitpoints : 3000,
+	points : 2000,
 	explosionSize : 200,
 	image : 'bigtowerenemy'
 });
@@ -664,7 +664,7 @@ sh.bossFrontShield = sh.pCreate(sh.enemy, {
 		this.parent.shootcycle = 0;
 	},
 	hitpoints : 1000,
-	points : 3000,
+	points : 2000,
 	explosionSize : 10,
 	image : 'towerenemy'
 });
@@ -906,7 +906,7 @@ sh.endPointsEvent = {
 		if(sh.player_lives) {
 			var pts = (sh.player_lives) * 10000;
 			sh.evt(sh.showTextEvent("Life bonus " + pts + "pts!", 120, 160));
-			sh.current_points += pts;
+			sh.current_score += pts;
 		}
 	}
 }
