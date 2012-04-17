@@ -268,7 +268,7 @@ sh.towerEnemy = sh.pCreate(sh.enemy, {
 		this.drawAngle = this.angle;
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 200,
+	hitpoints : 150,
 	points : 100,
 	image : 'towerenemy'
 });
@@ -305,7 +305,7 @@ sh.bigTowerEnemy = sh.pCreate(sh.enemy, {
 	},
 	width : 48,
 	height : 48,
-	hitpoints : 1200,
+	hitpoints : 800,
 	points : 500,
 	image : 'bigtowerenemy'
 });
@@ -410,7 +410,8 @@ sh.spreadShooterEnemy = sh.pCreate(sh.enemy, {
 		
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 500,
+	points : 300,
+	hitpoints : 300,
 	image : 'greenenemy'
 });
 
@@ -444,7 +445,8 @@ sh.spiralShooterEnemy = sh.pCreate(sh.enemy, {
 			
 		this.owntime += sh.update_delay;
 	},
-	hitpoints : 500,
+	points : 800,
+	hitpoints : 400,
 	image : 'greenenemy'
 });
 
@@ -592,6 +594,7 @@ sh.bossCore = sh.pCreate(sh.enemy, {
 	width : 48,
 	height : 48,
 	hitpoints : 1000,
+	points : 5000,
 	explosionSize : 200,
 	image : 'bigtowerenemy'
 });
@@ -632,6 +635,7 @@ sh.bossIndestructiblePart = sh.pCreate(sh.enemy, {
 		
 		this.owntime += sh.update_delay;
 	},
+	points : 1000,
 	indestructible : true,
 	image : 'ship'
 });
@@ -660,6 +664,7 @@ sh.bossFrontShield = sh.pCreate(sh.enemy, {
 		this.parent.shootcycle = 0;
 	},
 	hitpoints : 1000,
+	points : 3000,
 	explosionSize : 10,
 	image : 'towerenemy'
 });
@@ -885,13 +890,24 @@ sh.scrollSpeedInterpolateEvent = function(factor, ticks) {
 sh.winGameEvent = {
 	lifetime : 240,
 	onStart : function() {
-		sh.evt(sh.showTextEvent("U R the winner maximum!!1!", 120, 160));
-		sh.delay(130, sh.showTextEvent("U haz lives left? MOAR POINTS", 120, 160));
+		sh.evt(sh.showTextEvent("The monster is defeated!", 120, 160));
+		sh.delay(130, sh.endPointsEvent);
 	},
 	atEnd : function() {
 		sh.gameOver = true;
 		sh.victory = true;
 		sh.handleGameOver();
+	}
+}
+
+sh.endPointsEvent = {
+	lifetime : 1,
+	onStart : function() {
+		if(sh.player_lives) {
+			var pts = (sh.player_lives) * 10000;
+			sh.evt(sh.showTextEvent("Life bonus " + pts + "pts!", 120, 160));
+			sh.current_points += pts;
+		}
 	}
 }
 
@@ -1125,6 +1141,7 @@ sh.keyDown = function(evt){
 	if(evt.keyCode === 33) sh.changeScaling(sh.scale_factor + 1);
 	if(evt.keyCode === 34) sh.changeScaling(sh.scale_factor - 1);
 	if(evt.keyCode === 32) sh.player.toggleShooting();
+	if(evt.keyCode === 48) sh.player_lives++;
 }
 
 sh.keyUp = function(evt){
@@ -1199,7 +1216,7 @@ sh.game_init = function(){
 	
 	sh.player_lives_initial = 3;
 	
-	sh.extra_life_points = [1000, 8000, 15000, 25000];
+	sh.extra_life_points = [5000, 10000, 20000, 35000, 50000, 75000, 100000];
 
 	sh.high_score = 0;
 	sh.special_counter_max = 1000;
